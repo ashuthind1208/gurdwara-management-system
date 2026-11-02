@@ -20,11 +20,13 @@ const loadEnvFile = (filePath) => {
 
 const workspaceRoot = path.resolve(__dirname, '..');
 const productionEnvPath = path.join(workspaceRoot, '.env.production');
-const productionEnv = loadEnvFile(productionEnvPath);
+const publicProductionEnvPath = path.join(workspaceRoot, 'production-frontend.config');
+const selectedProductionEnvPath = fs.existsSync(productionEnvPath) ? productionEnvPath : publicProductionEnvPath;
+const productionEnv = loadEnvFile(selectedProductionEnvPath);
 const localEnv = loadEnvFile(path.join(workspaceRoot, '.env.local'));
 
-if (!fs.existsSync(productionEnvPath)) {
-  console.error('Missing .env.production. Refusing to create an unconfigured production bundle.');
+if (!fs.existsSync(selectedProductionEnvPath)) {
+  console.error('Missing production frontend configuration (.env.production or production-frontend.config). Refusing to create an unconfigured production bundle.');
   process.exit(1);
 }
 
