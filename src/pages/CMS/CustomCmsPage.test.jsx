@@ -10,7 +10,7 @@ jest.mock('../../components/common/PageHero', () => ({ title }) => <h1>{title}</
 
 const setup = () => render(<MemoryRouter initialEntries={['/panjpyaare']}><QueryClientProvider client={new QueryClient()}><CustomCmsPage /></QueryClientProvider></MemoryRouter>);
 
-test('renders custom page details and sections', async () => {
+test('renders custom page details and editable sections', async () => {
   cmsService.getAllPageContent.mockResolvedValue({ data: { panjpyaare: { heroTitle: 'Panj Pyaare', intro: '<p>The five beloved ones.</p>', sections: [{ id: 'history', title: 'History', body: '<p>Khalsa history.</p>' }] } } });
   setup();
   expect(await screen.findByRole('heading', { name: 'Panj Pyaare' })).toBeInTheDocument();
@@ -23,4 +23,11 @@ test('does not render a different page when the requested page is unpublished', 
   setup();
   expect(await screen.findByText('Page not found')).toBeInTheDocument();
   expect(screen.queryByText('About Us')).not.toBeInTheDocument();
+});
+
+test('never renders a deleted page even when a stale response contains its tombstone', async () => {
+  cmsService.getAllPageContent.mockResolvedValue({ data: { panjpyaare: { deleted: true, heroTitle: 'Deleted content', intro: 'Hidden content' } } });
+  setup();
+  expect(await screen.findByText('Page not found')).toBeInTheDocument();
+  expect(screen.queryByText('Hidden content')).not.toBeInTheDocument();
 });

@@ -12,7 +12,7 @@ const CustomCmsPage = () => {
   const { data: pages, isLoading, isError } = useQuery({ queryKey: ['cms-pages-public'], queryFn: () => cmsService.getAllPageContent().then((res) => res.data) });
   if (isLoading) return <p role="status" className="p-8 text-center">Loading page…</p>;
   if (isError) return <p role="alert" className="p-8 text-center">Unable to load this page. Please try again.</p>;
-  const content = Object.prototype.hasOwnProperty.call(pages || {}, key) ? pages[key] : null;
+  const content = Object.prototype.hasOwnProperty.call(pages || {}, key) && !pages[key]?.deleted ? pages[key] : null;
   if (!content) return <div className="space-y-4 py-12 text-center"><h1 className="text-3xl font-bold">Page not found</h1><p>This page has not been published yet.</p><Link to="/" className="font-bold text-brand-blue">Return home</Link></div>;
   return <div className="space-y-8">
     <Seo title={content.heroTitle || key} description={content.heroDescription || ''} />

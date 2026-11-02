@@ -1252,6 +1252,8 @@ const mirrorSingletonResource = async (resource, payload) => {
     await pool.query('DELETE FROM cms_pages;');
 
     for (const [slug, page] of Object.entries(pages)) {
+      // Keep tombstones in the singleton, not in the searchable relational mirror.
+      if (!page || page.deleted === true) continue;
       const pageId = page.id || `page-${slug}`;
       await pool.query(
         `

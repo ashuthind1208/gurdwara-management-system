@@ -416,7 +416,18 @@ const insertSlideAtOrder = (slides, nextSlide, requestedOrder) => {
   return normalizeSlides([...before, nextSlide, ...after]);
 };
 
-const normalizePageEntry = (pageValue = {}, fallback = {}) => ({
+const blankPageContent = { heroTitle: '', heroDescription: '', intro: '', mediaUrl: '', phone: '', email: '', address: '', contactHours: [], socialLinks: {}, sections: [] };
+
+export const normalizeCmsPagePath = (path) => {
+  const key = String(path || '').trim().replace(/^\/+|\/+$/g, '');
+  const reserved = /^(admin|api|login|join|family-dashboard|gurbani-library|hukamnama|bookings|seva|donation|kids-learning|media|news|library|videos|faq|welcome|donationsuccess|donation-board|event-calendar-board|langar-board|langar-contribute|daily-schedule-board|led-boards|special-events-board|community-announcements-board|welcome-journey-board|hukamnama-board|recitation-board|stream-overlay|follow|granthi-remote|ask-a-granthi)(\/|$)/;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(key) || reserved.test(key)) {
+    throw new Error('Enter a lowercase public page path with letters, numbers, and hyphens; application routes are reserved.');
+  }
+  return key;
+};
+
+const normalizePageEntry = (pageValue = {}, fallback = {}) => pageValue.deleted === true ? { ...blankPageContent, deleted: true } : ({
   ...fallback,
   ...pageValue,
   sections: (pageValue.sections || fallback.sections || []).map((section, index) => ({
@@ -490,17 +501,9 @@ const persistContent = async (nextValue) => {
 };
 
 const readAllPageContent = async () => {
-  try {
-    const payload = await contentApiService.getSingleton(PAGE_CONTENT_RESOURCE, null);
-    if (!payload) {
-      const seeded = normalizeAllPageContent(defaultPageContent);
-      await contentApiService.setSingleton(PAGE_CONTENT_RESOURCE, seeded);
-      return seeded;
-    }
-    return normalizeAllPageContent(payload);
-  } catch {
-    return normalizeAllPageContent(defaultPageContent);
-  }
+  // Reads must not write or revive defaults when storage is unavailable.
+  const payload = await contentApiService.getSingleton(PAGE_CONTENT_RESOURCE, null);
+  return normalizeAllPageContent(payload || defaultPageContent);
 };
 
 const persistPageContent = async (nextValue) => {
@@ -775,14 +778,17 @@ const cmsService = {
 
     return serviceResponse(normalizeContent(await persistContent(nextValue)).scheduleDays);
   },
-  getAllPageContent: async () => serviceResponse(await readAllPageContent()),
+  // Admin reads preserve deletion markers; public lists exclude deleted pages.
+  readAllPageContent: async () => serviceResponse(await readAllPageContent()),
+  getAllPageContent: async () => serviceResponse(Object.fromEntries(Object.entries(await readAllPageContent()).filter(([, page]) => !page.deleted))),
   getPageContent: async (pageKey) => {
     const allContent = await readAllPageContent();
-    return serviceResponse(allContent[pageKey] || { heroTitle: pageKey.split('/').pop().replace(/-/g, ' '), heroDescription: '', intro: '', mediaUrl: '', sections: [] });
+    return serviceResponse(Object.prototype.hasOwnProperty.call(allContent, pageKey) ? allContent[pageKey] : { heroTitle: pageKey.split('/').pop().replace(/-/g, ' '), heroDescription: '', intro: '', mediaUrl: '', sections: [] });
   },
   updatePageContent: async (pageKey, payload) => {
     const allContent = await readAllPageContent();
-    if (!/^[a-z0-9][a-z0-9/-]*$/.test(pageKey)) throw new Error('Use a lowercase page path with letters, numbers, and hyphens.');
+    pageKey = normalizeCmsPagePath(pageKey);
+    if (allContent[pageKey]?.deleted) throw new Error('This page was deleted. Add it again to publish new content.');
     const fallback = defaultPageContent[pageKey] || {};
     const nextValue = {
       ...allContent,
@@ -795,6 +801,25 @@ const cmsService = {
 
     const saved = normalizeAllPageContent(await persistPageContent(nextValue));
     return serviceResponse(saved[pageKey]);
+  },
+  createPageContent: async (path, payload) => {
+    const pageKey = normalizeCmsPagePath(path);
+    const allContent = await readAllPageContent();
+    if (Object.prototype.hasOwnProperty.call(allContent, pageKey) && !allContent[pageKey].deleted) throw new Error('A page already exists at this path. Use Edit instead.');
+    const page = normalizePageEntry({ ...blankPageContent, ...payload, deleted: false });
+    await persistPageContent({ ...allContent, [pageKey]: page });
+    return serviceResponse(page);
+  },
+  deletePageContent: async (path) => {
+    const pageKey = normalizeCmsPagePath(path);
+    const allContent = await readAllPageContent();
+    if (Object.prototype.hasOwnProperty.call(defaultPageContent, pageKey)) {
+      allContent[pageKey] = normalizePageEntry({ deleted: true });
+    } else {
+      delete allContent[pageKey];
+    }
+    await persistPageContent(allContent);
+    return serviceResponse(null);
   }
 };
 
