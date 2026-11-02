@@ -285,6 +285,7 @@ const AdminUsersPage = () => {
     queryFn: () => contentApiService.getSingleton(PUBLIC_TITLE_RESOURCE, DEFAULT_PUBLIC_TITLES).then((res) => normalizePublicTitles(res || []))
   });
   const [desktopSearchTerm, setDesktopSearchTerm] = useState('');
+  const [desktopPage, setDesktopPage] = useState(1);
   const [mobileSearchTerm, setMobileSearchTerm] = useState('');
   const [mobilePage, setMobilePage] = useState(1);
   const mobilePageSize = 10;
@@ -459,6 +460,15 @@ const AdminUsersPage = () => {
       return haystack.includes(searchTerm);
     });
   }, [filteredUsers, mobileSearchTerm]);
+
+  const desktopTotalPages = Math.max(1, Math.ceil(desktopFilteredUsers.length / 10));
+  const safeDesktopPage = Math.min(desktopPage, desktopTotalPages);
+  const paginatedDesktopUsers = desktopFilteredUsers.slice((safeDesktopPage - 1) * 10, safeDesktopPage * 10);
+
+  useEffect(() => { setDesktopPage(1); }, [activeFilter, desktopSearchTerm]);
+  useEffect(() => {
+    setDesktopPage((current) => Math.min(current, desktopTotalPages));
+  }, [desktopTotalPages]);
 
   const mobileTotalPages = Math.max(1, Math.ceil(mobileFilteredUsers.length / mobilePageSize));
   const safeMobilePage = Math.min(mobilePage, mobileTotalPages);
@@ -869,7 +879,7 @@ const AdminUsersPage = () => {
               </tr>
             </thead>
             <tbody>
-              {desktopFilteredUsers.map((user) => {
+              {paginatedDesktopUsers.map((user) => {
                 const approvalStatus = String(user.approvalStatus || 'pending').toLowerCase();
                 const avatarUrl = getAvatarUrl(user);
                 return (
@@ -966,6 +976,14 @@ const AdminUsersPage = () => {
               ) : null}
             </tbody>
           </table>
+          <nav aria-label="Users table pagination" className="flex items-center justify-between gap-3 border-t p-3 text-sm">
+            <span>{desktopFilteredUsers.length ? `Showing ${(safeDesktopPage - 1) * 10 + 1}–${Math.min(safeDesktopPage * 10, desktopFilteredUsers.length)} of ${desktopFilteredUsers.length}` : '0 users'}</span>
+            <div className="flex items-center gap-3">
+              <button type="button" className="rounded-lg border px-3 py-2 disabled:opacity-40" disabled={safeDesktopPage === 1} onClick={() => setDesktopPage(safeDesktopPage - 1)}>Previous</button>
+              <span>Page {safeDesktopPage} of {desktopTotalPages}</span>
+              <button type="button" className="rounded-lg border px-3 py-2 disabled:opacity-40" disabled={safeDesktopPage === desktopTotalPages} onClick={() => setDesktopPage(safeDesktopPage + 1)}>Next</button>
+            </div>
+          </nav>
         </div>
 
         <div className="space-y-3 lg:hidden">

@@ -71,9 +71,9 @@ const PublicLayout = () => {
   }, [location.pathname, location.search, location.hash]);
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-brand-cream text-slate-900 transition-colors">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-brand-cream text-slate-900 transition-colors">
       <Navbar />
-      <main className={`mx-auto w-full max-w-7xl px-4 ${isHomeRoute ? 'pt-0 pb-5 md:pt-0 md:pb-6' : 'py-5 md:py-6'} md:px-6`}>
+      <main className={`mx-auto w-full max-w-7xl flex-1 px-4 ${isHomeRoute ? 'pt-0 pb-5 md:pt-0 md:pb-6' : 'py-5 md:py-6'} md:px-6`}>
         <Suspense fallback={<div className="py-20 text-center text-slate-600">Loading page...</div>}>
           <Outlet />
         </Suspense>

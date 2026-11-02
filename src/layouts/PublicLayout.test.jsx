@@ -60,3 +60,14 @@ test('shows the floating Ask a Granthi assistant without adding a navigation lin
   expect(screen.getByRole('button', { name: 'Ask a Granthi Ji a question' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /ask a granthi/i })).not.toBeInTheDocument();
 });
+
+test('short public pages use a full-height flex layout with a growing main above the footer', () => {
+  render(<MemoryRouter><Routes><Route element={<PublicLayout />}><Route index element={<div>Short page</div>} /></Route></Routes></MemoryRouter>);
+  const main = screen.getByRole('main');
+  expect(main).toHaveClass('flex-1');
+  // Structural assertions are required to verify the sticky-footer flex contract.
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(main.parentElement).toHaveClass('flex', 'min-h-screen', 'flex-col');
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(main.nextElementSibling).toBe(screen.getByRole('contentinfo'));
+});
