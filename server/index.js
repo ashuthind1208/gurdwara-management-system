@@ -6528,8 +6528,14 @@ const server = http.createServer(async (request, response) => {
 
   if ((requestUrl.pathname === '/api/gurdwara-branding' || requestUrl.pathname === '/api/ask-granthi/branding') && request.method === 'PUT') {
     try {
-      assertInput(isSuperAdmin(request), 'Only Super Admins can change Gurdwara branding.', 403);
+      const actor = getRequestActor(request);
+      assertInput(actor.email && actor.role.trim().toLowerCase() === 'super admin', 'Only Super Admins can change Gurdwara branding.', 403);
       assertInput(eventsDb.hasDatabaseConnection, 'Gurdwara branding is temporarily unavailable.', 503);
+      const users = await eventsDb.listItems('users');
+      const user = users.find((entry) => String(entry.email || '').trim().toLowerCase() === actor.email);
+      const role = String(user?.role || '').trim().toLowerCase();
+      assertInput(Boolean(user) && user.isActive === true && String(user.approvalStatus || '').trim().toLowerCase() === 'approved' && role === 'super admin', 'Only active, approved Super Admins can change Gurdwara branding.', 403);
+      assertInput(actor.role.trim().toLowerCase() === role, 'Your session permissions changed. Please sign in again.', 403);
       const payload = await parseJsonObjectBody(request, { maxBytes: 32 * 1024, allowEmpty: false });
       ensureNoUnknownKeys(payload, ['organizationName', 'shortName', 'logoUrl', 'primaryColor', 'accentColor', 'surfaceColor', 'footerColor', 'textColor', 'savedThemes', 'buttonColor', 'buttonHoverColor', 'linkColor', 'linkHoverColor', 'tagline', 'faviconUrl', 'headingFont', 'bodyFont', 'cornerStyle', 'logoShape', 'address', 'phone', 'email', 'facebookUrl', 'instagramUrl', 'youtubeUrl']);
       const colorPattern = /^#[0-9a-f]{6}$/i;
@@ -7809,7 +7815,7 @@ const server = http.createServer(async (request, response) => {
 
   const contentGuardMatch = requestUrl.pathname.match(/^\/api\/content(?:-single)?\/([a-z0-9_-]+)/i);
   if (contentGuardMatch && (recitationService.isProtectedResource(contentGuardMatch[1])
-    || ['stream_overlay_settings', 'community_announcement_submissions', 'site_navigation'].includes(contentGuardMatch[1].toLowerCase()))) {
+    || ['stream_overlay_settings', 'community_announcement_submissions', 'site_navigation', 'gurdwara_branding', 'ask_granthi_branding'].includes(contentGuardMatch[1].toLowerCase()))) {
     sendJson(response, 404, { ok: false, message: 'Not found.' });
     return;
   }
