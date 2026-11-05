@@ -1,10 +1,43 @@
 import {
   bookingBelongsToProfile,
+  isBookingArchived,
   isBookingPaymentDonation,
   sortBookingsBySchedule
 } from './profileBookings';
 
 describe('profile bookings', () => {
+  describe('archive schedule semantics', () => {
+    const now = new Date('2026-11-04T12:00:00');
+
+    test.each(['pending', 'confirmed', 'completed', 'cancelled'])('archives past %s bookings', (status) => {
+      expect(isBookingArchived({ date: '2026-11-03', status }, now)).toBe(true);
+    });
+
+    test('archives cancellations even when scheduled in the future', () => {
+      expect(isBookingArchived({ date: '2026-11-05', status: ' Cancelled ' }, now)).toBe(true);
+    });
+
+    test('keeps ongoing and future bookings, including legacy completed status, current', () => {
+      expect(isBookingArchived({ date: '2026-11-03', toDate: '2026-11-05', status: 'confirmed' }, now)).toBe(false);
+      expect(isBookingArchived({ date: '2026-11-05', status: 'completed' }, now)).toBe(false);
+      expect(isBookingArchived({ date: '2026-11-04', endTime: '12:00' }, now)).toBe(false);
+      expect(isBookingArchived({ date: '2026-11-04', endTime: '12:01' }, now)).toBe(false);
+    });
+
+    test('uses the final day and time, retaining date-only bookings throughout that day', () => {
+      expect(isBookingArchived({ date: '2026-11-04', endTime: '11:59' }, now)).toBe(true);
+      expect(isBookingArchived({ date: '2026-11-02', toDate: '2026-11-04', endTime: '11:59' }, now)).toBe(true);
+      expect(isBookingArchived({ date: '2026-11-04' }, now)).toBe(false);
+      expect(isBookingArchived({ date: '2026-11-04', endTime: 'invalid' }, now)).toBe(false);
+    });
+
+    test('does not hide bookings with missing or invalid schedules', () => {
+      expect(isBookingArchived({}, now)).toBe(false);
+      expect(isBookingArchived({ date: 'invalid' }, now)).toBe(false);
+      expect(isBookingArchived({ date: '2026-13-01' }, now)).toBe(false);
+    });
+  });
+
   test('matches bookings by email or normalized phone', () => {
     expect(bookingBelongsToProfile(
       { requesterEmail: 'member@example.com' },

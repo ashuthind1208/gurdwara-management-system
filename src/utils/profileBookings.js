@@ -1,6 +1,21 @@
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const normalizePhone = (value) => String(value || '').replace(/\D/g, '');
 
+// "completed" is normalized to "confirmed" by bookingService; use the
+// schedule, not that legacy status, to determine whether a booking has ended.
+export const isBookingArchived = (booking = {}, now = new Date()) => {
+  if (normalizeText(booking.status) === 'cancelled') {
+    return true;
+  }
+  const endDate = String(booking.toDate || booking.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    return false;
+  }
+  const endTime = String(booking.endTime || '').trim();
+  const end = new Date(`${endDate}T${/^\d{2}:\d{2}(:\d{2})?$/.test(endTime) ? endTime : '23:59:59.999'}`);
+  return !Number.isNaN(end.getTime()) && end.getTime() < now.getTime();
+};
+
 export const bookingBelongsToProfile = (booking = {}, profile = {}) => {
   const profileEmail = normalizeText(profile.email);
   const profilePhone = normalizePhone(profile.phone);
