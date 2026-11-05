@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -14,9 +15,10 @@ import bookingService from '../../services/bookingService';
 import { downloadCsv, downloadDonationInvoicePdf, downloadMembershipFeeInformationPdf } from '../../utils/csvExport';
 import { siteConfig } from '../../constants/siteConfig';
 import { isEventCurrent } from '../../utils/eventAvailability';
-import { bookingBelongsToProfile, isBookingPaymentDonation, sortBookingsBySchedule } from '../../utils/profileBookings';
+import { bookingBelongsToProfile, isBookingArchived, isBookingPaymentDonation, sortBookingsBySchedule } from '../../utils/profileBookings';
 import langarService, { LANGAR_CONTRIBUTIONS_RESOURCE } from '../../services/langarService';
 import CommunityAnnouncementRequestCard from '../../components/communityAnnouncements/CommunityAnnouncementRequestCard';
+import FamilyReadingProgressCard from '../../components/recitation/FamilyReadingProgressCard';
 
 const toDateKey = (value) => {
   const parsed = new Date(value);
@@ -116,6 +118,27 @@ const nowLocalMinutes = () => {
   return (now.getHours() * 60) + now.getMinutes();
 };
 
+const BookingHistoryRows = ({ bookings, onView, emptyMessage }) => (
+  <div className="mt-3 space-y-2">
+    {bookings.map((booking) => (
+      <div key={booking.id} className="rounded-lg border border-slate-200/80 bg-white/90 px-3 py-2 text-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-slate-800">{booking.title || booking.categoryName || 'Booking'}</p>
+            <p className="mt-0.5 text-xs text-slate-600">{booking.date || 'Date not set'}</p>
+            <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-blue">Type: {booking.categoryName || 'Other'}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase shadow-sm ${bookingStatusPillClass(booking.status)}`}>{booking.status || 'pending'}</span>
+            <button type="button" onClick={(event) => onView(booking, event.currentTarget)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-blue/25 bg-blue-50 text-brand-blue transition hover:border-brand-blue hover:bg-brand-blue hover:text-white" aria-label={`View booking details for ${booking.title || booking.categoryName || 'booking'}`} title="View booking details"><EyeIcon className="h-4 w-4" /></button>
+          </div>
+        </div>
+      </div>
+    ))}
+    {bookings.length === 0 ? <p className="text-sm text-slate-500">{emptyMessage}</p> : null}
+  </div>
+);
+
 const FamilyDashboardPage = () => {
   const meta = useSeoMeta('Family Dashboard', 'Track your family event RSVPs, waitlists, seva applications, and donations in one view.');
   const { user, isAuthenticated } = useAuth();
@@ -123,6 +146,15 @@ const FamilyDashboardPage = () => {
   const [donationPage, setDonationPage] = useState(1);
   const [calendarNotice, setCalendarNotice] = useState({ type: '', message: '' });
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [bookingArchiveOpen, setBookingArchiveOpen] = useState(false);
+  const bookingArchiveDialogRef = useRef(null);
+  const bookingDetailDialogRef = useRef(null);
+  const bookingArchiveReturnFocusRef = useRef(null);
+  const bookingDetailReturnFocusRef = useRef(null);
+  const openBookingDetails = (booking, trigger) => {
+    bookingDetailReturnFocusRef.current = trigger;
+    setSelectedBooking(booking);
+  };
   const donationsPerPage = 6;
   const userDisplayName = String(user?.name || 'Member').trim() || 'Member';
   const userAvatarUrl = String(user?.avatarUrl || user?.picture || user?.photoURL || user?.imageUrl || user?.profileImageUrl || '').trim();
@@ -291,6 +323,10 @@ const FamilyDashboardPage = () => {
     );
   }, [bookings, isAuthenticated, user]);
 
+  const bookingNow = new Date();
+  const currentBookings = familyBookings.filter((booking) => !isBookingArchived(booking, bookingNow));
+  const archivedBookings = familyBookings.filter((booking) => isBookingArchived(booking, bookingNow));
+
   const familyDonations = useMemo(() => {
     if (!isAuthenticated) {
       return [];
@@ -322,22 +358,62 @@ const FamilyDashboardPage = () => {
   ), [isMember, user?.membershipFeeRecords]);
 
   useEffect(() => {
-    if (!selectedBooking) {
+    if (!selectedBooking && !bookingArchiveOpen) {
       return undefined;
     }
+    const dialog = selectedBooking ? bookingDetailDialogRef.current : bookingArchiveDialogRef.current;
+    const previousFocus = selectedBooking ? bookingDetailReturnFocusRef.current : bookingArchiveReturnFocusRef.current;
     const previousOverflow = document.body.style.overflow;
+    const background = Array.from(document.body.children)
+      .filter((element) => !element.contains(dialog))
+      .map((element) => ({ element, inert: element.inert, ariaHidden: element.getAttribute('aria-hidden') }));
+    background.forEach(({ element }) => {
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+    });
     document.body.style.overflow = 'hidden';
+    const focusableElements = () => Array.from(dialog.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'));
+    if (!dialog.contains(document.activeElement)) {
+      (focusableElements()[0] || dialog).focus();
+    }
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') {
-        setSelectedBooking(null);
+        event.preventDefault();
+        if (selectedBooking) {
+          setSelectedBooking(null);
+        } else {
+          setBookingArchiveOpen(false);
+        }
+      } else if (event.key === 'Tab') {
+        const elements = focusableElements();
+        const first = elements[0] || dialog;
+        const last = elements[elements.length - 1] || dialog;
+        if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', closeOnEscape);
+      background.forEach(({ element, inert, ariaHidden }) => {
+        element.inert = inert;
+        if (ariaHidden === null) {
+          element.removeAttribute('aria-hidden');
+        } else {
+          element.setAttribute('aria-hidden', ariaHidden);
+        }
+      });
+      if (previousFocus?.isConnected) {
+        previousFocus.focus();
+      }
     };
-  }, [selectedBooking]);
+  }, [selectedBooking, bookingArchiveOpen]);
 
   const exportFamilyEventsCsv = () => {
     downloadCsv({
@@ -612,6 +688,8 @@ const FamilyDashboardPage = () => {
 
       <CommunityAnnouncementRequestCard />
 
+      <FamilyReadingProgressCard />
+
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
           <article className="rounded-2xl border border-brand-blue/20 bg-gradient-to-br from-blue-50 via-white to-blue-100 p-5">
@@ -695,26 +773,12 @@ const FamilyDashboardPage = () => {
           </article>
 
           <article className="rounded-2xl border border-cyan-200/80 bg-gradient-to-br from-cyan-50 via-white to-blue-100 p-5">
-            <h2 className="text-2xl font-black text-brand-blue">Booking History</h2>
-            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Total bookings: {familyBookings.length}</p>
-            <div className="mt-3 space-y-2">
-              {familyBookings.map((booking) => (
-                <div key={booking.id} className="rounded-lg border border-slate-200/80 bg-white/90 px-3 py-2 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-800">{booking.title || booking.categoryName || 'Booking'}</p>
-                      <p className="mt-0.5 text-xs text-slate-600">{booking.date || 'Date not set'}</p>
-                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-blue">Type: {booking.categoryName || 'Other'}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className={`rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase shadow-sm ${bookingStatusPillClass(booking.status)}`}>{booking.status || 'pending'}</span>
-                      <button type="button" onClick={() => setSelectedBooking(booking)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-blue/25 bg-blue-50 text-brand-blue transition hover:border-brand-blue hover:bg-brand-blue hover:text-white" aria-label={`View booking details for ${booking.title || booking.categoryName || 'booking'}`} title="View booking details"><EyeIcon className="h-4 w-4" /></button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {familyBookings.length === 0 ? <p className="text-sm text-slate-500">No bookings found for your profile yet.</p> : null}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-black text-brand-blue">Booking History</h2>
+              <button type="button" onClick={(event) => { bookingArchiveReturnFocusRef.current = event.currentTarget; setBookingArchiveOpen(true); }} aria-haspopup="dialog" className="rounded-full border border-brand-blue/25 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue transition hover:bg-blue-50">Archived</button>
             </div>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Current / upcoming bookings: {currentBookings.length}</p>
+            <BookingHistoryRows bookings={currentBookings} onView={openBookingDetails} emptyMessage={familyBookings.length === 0 ? 'No bookings found for your profile yet.' : 'No current or upcoming bookings for your profile.'} />
           </article>
 
           <article className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-100 p-5">
@@ -821,10 +885,28 @@ const FamilyDashboardPage = () => {
         </article>
       </section>
 
-      {selectedBooking ? (
+      {bookingArchiveOpen ? createPortal(
+        <div hidden={Boolean(selectedBooking)} className="fixed inset-0 z-[280] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" onClick={() => setBookingArchiveOpen(false)}>
+          <div className="flex min-h-full items-center justify-center py-4">
+            <div ref={bookingArchiveDialogRef} role="dialog" aria-modal="true" aria-labelledby="booking-archive-title" tabIndex={-1} className="w-full max-w-3xl rounded-2xl border border-white/20 bg-white p-5 shadow-2xl sm:p-7" onClick={(event) => event.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="booking-archive-title" className="text-2xl font-black text-brand-blue">Archived Bookings</h2>
+                  <p className="mt-1 text-sm text-slate-600">Past and cancelled bookings: {archivedBookings.length}</p>
+                </div>
+                <button type="button" onClick={() => setBookingArchiveOpen(false)} aria-label="Close archived bookings" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 text-brand-blue hover:bg-blue-50"><XMarkIcon className="h-5 w-5" /></button>
+              </div>
+              <BookingHistoryRows bookings={archivedBookings} onView={openBookingDetails} emptyMessage="No archived bookings found for your profile yet." />
+              <div className="mt-4 flex justify-end"><button type="button" onClick={() => setBookingArchiveOpen(false)} className="rounded-lg bg-brand-blue px-5 py-2 text-sm font-bold text-white hover:bg-blue-700">Close</button></div>
+            </div>
+          </div>
+        </div>, document.body
+      ) : null}
+
+      {selectedBooking ? createPortal(
         <div className="fixed inset-0 z-[280] overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" onClick={() => setSelectedBooking(null)}>
           <div className="flex min-h-full items-center justify-center py-4">
-            <div role="dialog" aria-modal="true" aria-labelledby="booking-detail-title" className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_28px_80px_rgba(2,6,23,0.42)]" onClick={(event) => event.stopPropagation()}>
+            <div ref={bookingDetailDialogRef} role="dialog" aria-modal="true" aria-labelledby="booking-detail-title" tabIndex={-1} className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-[0_28px_80px_rgba(2,6,23,0.42)]" onClick={(event) => event.stopPropagation()}>
               <div className="relative overflow-hidden bg-[#052f63] px-5 py-5 text-white sm:px-7">
                 <div className="absolute inset-y-0 right-0 w-40 bg-brand-saffron/25 [clip-path:polygon(45%_0,100%_0,100%_100%,0_100%)]" />
                 <div className="relative flex items-start justify-between gap-4">
@@ -842,7 +924,7 @@ const FamilyDashboardPage = () => {
               <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-3 sm:px-7"><button type="button" onClick={() => setSelectedBooking(null)} className="rounded-lg bg-brand-blue px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700">Close</button></div>
             </div>
           </div>
-        </div>
+        </div>, document.body
       ) : null}
     </div>
   );

@@ -7,6 +7,8 @@ jest.mock('@tanstack/react-query', () => ({
   useMutation: () => ({ mutate: jest.fn(), reset: jest.fn(), isPending: false, isError: false, error: null })
 }));
 
+jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: false, user: null }) }));
+
 jest.mock('../components/layout/Navbar', () => {
   const { Link } = require('react-router-dom');
   return function MockNavbar() {
@@ -58,6 +60,7 @@ test('shows the floating Ask a Granthi assistant without adding a navigation lin
   );
 
   expect(screen.getByRole('button', { name: 'Ask a Granthi Ji a question' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Open Gutka Sahib reader' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /ask a granthi/i })).not.toBeInTheDocument();
 });
 

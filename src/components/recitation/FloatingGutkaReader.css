@@ -1,0 +1,27 @@
+.gutka-backdrop {
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+
+.gutka-dialog {
+  max-width: 760px;
+  max-height: min(90dvh, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+}
+
+@media (min-width: 640px) {
+  .gutka-backdrop {
+    padding: 24px;
+  }
+
+  .gutka-dialog {
+    max-height: min(88dvh, 820px);
+  }
+}
+
+.gutka-scroll {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gutka-scroll::-webkit-scrollbar {
+  display: none;
+}
