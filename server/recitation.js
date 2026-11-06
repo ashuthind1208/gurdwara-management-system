@@ -42,6 +42,7 @@ const slimVerse = (item = {}) => {
   const punjabi = translation.pu || {};
   return {
     g: readText(verse?.verse?.unicode),
+    r: readText(verse?.transliteration?.english) || readText(verse?.transliteration?.en),
     e: readText(translation.en?.bdb) || readText(translation.en?.ssk) || readText(translation.en?.ms),
     p: readText(punjabi.ss?.unicode) || readText(punjabi.bdb?.unicode) || readText(punjabi.ft?.unicode) || readText(punjabi.ms?.unicode),
     a: Number(verse?.pageNo) || 0
@@ -184,14 +185,23 @@ const createRecitationService = ({ eventsDb, sendJson, parseJsonObjectBody, asse
   const loadText = async (source) => {
     if (textMemory.has(source.key)) return textMemory.get(source.key);
     const stored = await eventsDb.getSingleton(`${TEXT_CACHE_PREFIX}${source.type}_${source.id}`, null);
-    if (stored?.lines?.length) {
+    if (stored?.lines?.length && Number(stored.version) >= 2) {
       textMemory.set(source.key, stored);
       return stored;
     }
-    const downloaded = await downloadText(source);
-    const lines = downloaded.lines.filter((line) => line.g);
-    assertInput(lines.length > 0, 'No Gurbani text was found for that selection.', 404);
-    const record = { key: source.key, type: source.type, id: source.id, title: downloaded.title, titleEnglish: downloaded.titleEnglish, totalLines: lines.length, lines, fetchedAt: new Date(now()).toISOString() };
+    let downloaded;
+    let lines;
+    try {
+      downloaded = await downloadText(source);
+      lines = downloaded.lines.filter((line) => line.g);
+      assertInput(lines.length > 0, 'No Gurbani text was found for that selection.', 404);
+    } catch (error) {
+      // Upgrade legacy text when possible, but never interrupt recitation during an API outage.
+      if (!stored?.lines?.length) throw error;
+      textMemory.set(source.key, stored);
+      return stored;
+    }
+    const record = { key: source.key, type: source.type, id: source.id, title: downloaded.title, titleEnglish: downloaded.titleEnglish, totalLines: lines.length, lines, version: 2, fetchedAt: new Date(now()).toISOString() };
     textMemory.set(source.key, record);
     await eventsDb.setSingleton(`${TEXT_CACHE_PREFIX}${source.type}_${source.id}`, record);
     return record;

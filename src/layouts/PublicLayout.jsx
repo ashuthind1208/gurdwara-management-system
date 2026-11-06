@@ -80,7 +80,7 @@ const PublicLayout = () => {
         </Suspense>
       </main>
       <Footer />
-      <FloatingGutkaReader />
+      <div className="hidden xl:block"><FloatingGutkaReader /></div>
       <FloatingAskGranthi />
     </div>
   );

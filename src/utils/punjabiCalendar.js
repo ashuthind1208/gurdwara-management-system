@@ -134,6 +134,18 @@ const FIXED_OBSERVANCES = [
   { date: '2027-06-30', title: 'Guru Hargobind Sahib Ji', type: 'Prakash' }
 ];
 
+export const getFallbackNanakshahiObservances = () => FIXED_OBSERVANCES.map((item, index) => ({
+  ...item,
+  id: `local-nanakshahi-${item.date}-${index}`,
+  gregorianDate: item.date
+}));
+
+export const mergeNanakshahiObservances = (remote = [], fallback = getFallbackNanakshahiObservances()) => {
+  const primary = Array.isArray(remote) ? remote : [];
+  const known = new Set(primary.map((item) => `${String(item.date || item.gregorianDate || '').slice(0, 10)}::${String(item.title || '').trim().toLowerCase()}`));
+  return [...primary, ...(Array.isArray(fallback) ? fallback : []).filter((item) => !known.has(`${String(item.date || item.gregorianDate || '').slice(0, 10)}::${String(item.title || '').trim().toLowerCase()}`))];
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const GURMUKHI_DIGITS = ['੦', '੧', '੨', '੩', '੪', '੫', '੬', '੭', '੮', '੯'];
 const WEEK_DAYS = 7;

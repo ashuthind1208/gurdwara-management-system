@@ -37,23 +37,115 @@ const createHarness = () => {
   });
   const call = async (method, path, { body } = {}) => {
     const request = { method, body, headers: {} };
-    const response = {};
+    const response = {
+      writeHead(status) { this.status = status; },
+      end(payload) { this.payload = JSON.parse(Buffer.from(payload).toString('utf8')); }
+    };
     await service.handleApi(request, response, new URL(`http://localhost${path}`));
     return response;
   };
   return { db, service, call };
 };
 
-const seedText = (db, id = 31) => db.setSingleton(`recitation_text_bani_${id}`, {
-  key: `bani-${id}`, type: 'bani', id, title: 'ਸੁਖਮਨੀ ਸਾਹਿਬ', titleEnglish: 'Sukhmani Sahib', totalLines: 3,
+test('refreshes legacy cached Bani text to include BaniDB English phonetics', async () => {
+  const { db, call } = createHarness();
+  await seedText(db, 2, 1);
+  const previousFetch = global.fetch;
+  global.fetch = async (url) => ({
+    ok: true,
+    async json() {
+      if (String(url).endsWith('/banis')) return [{ ID: 2, gurmukhiUni: 'ਜਪੁਜੀ ਸਾਹਿਬ', transliteration: 'Japji Sahib' }];
+      return { baniInfo: { unicode: 'ਜਪੁਜੀ ਸਾਹਿਬ' }, verses: [{
+        verse: {
+          verseId: 1,
+          verse: { unicode: 'ੴ ਸਤਿ ਨਾਮੁ' },
+          translation: { en: { bdb: 'One Universal Creator' } },
+          transliteration: { english: 'Ik-oankar Sat Naam' },
+          pageNo: 1
+        }
+      }] };
+    }
+  });
+  try {
+    const response = await call('GET', '/api/recitation/text?type=bani&id=2&view=full');
+    assert.equal(response.status, 200);
+    assert.equal(response.payload.data.lines[0].r, 'Ik-oankar Sat Naam');
+    assert.equal(db.singletons.get('recitation_text_bani_2').version, 2);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+const seedText = (db, id = 31, version = 2) => db.setSingleton(`recitation_text_bani_${id}`, {
+  key: `bani-${id}`, type: 'bani', id, version, title: 'ਸੁਖਮਨੀ ਸਾਹਿਬ', titleEnglish: 'Sukhmani Sahib', totalLines: 3,
   lines: [{ g: 'ਇੱਕ', e: 'one', p: 'ਇੱਕ ਹੈ', a: 262 }, { g: 'ਦੋ', e: 'two', p: 'ਦੋ ਹੈ', a: 262 }, { g: 'ਤਿੰਨ', e: 'three', p: 'ਤਿੰਨ ਹੈ', a: 262 }]
 });
 
-test('slimVerse reads nested bani verses and flat ang verses', () => {
-  const nested = { verse: { verseId: 5, verse: { unicode: 'ਸਤਿ' }, translation: { en: { bdb: 'Truth' }, pu: { ss: { unicode: 'ਸੱਚ' } } }, pageNo: 4 } };
-  const flat = { verseId: 6, verse: { unicode: 'ਨਾਮ' }, translation: { en: { ssk: 'Name' }, pu: { bdb: { unicode: 'ਨਾਮ ਹੈ' } } }, pageNo: 9 };
-  assert.deepEqual(slimVerse(nested), { g: 'ਸਤਿ', e: 'Truth', p: 'ਸੱਚ', a: 4 });
-  assert.deepEqual(slimVerse(flat), { g: 'ਨਾਮ', e: 'Name', p: 'ਨਾਮ ਹੈ', a: 9 });
+test('legacy cached text still serves and starts recitation when the API is down', async () => {
+  const { db, call } = createHarness();
+  await seedText(db);
+  const legacy = { ...db.singletons.get('recitation_text_bani_31') };
+  delete legacy.version;
+  await db.setSingleton('recitation_text_bani_31', legacy);
+  const previousFetch = global.fetch;
+  let fetches = 0;
+  global.fetch = async () => { fetches += 1; throw new Error('BaniDB unavailable'); };
+  try {
+    const response = await call('GET', '/api/recitation/text?type=bani&id=31&view=full');
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.payload.data.lines, legacy.lines);
+    const started = await call('POST', '/api/recitation/sessions', { body: { sourceType: 'bani', sourceId: 31 } });
+    assert.equal(started.status, 201);
+    assert.equal(started.payload.data.totalLines, 3);
+    assert.equal(fetches, 1);
+    assert.deepEqual(db.singletons.get('recitation_text_bani_31'), legacy);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test('current cached text is reused without calling the external API', async () => {
+  const { db, call } = createHarness();
+  await seedText(db);
+  const previousFetch = global.fetch;
+  let fetches = 0;
+  global.fetch = async () => { fetches += 1; throw new Error('Unexpected API request'); };
+  try {
+    const response = await call('GET', '/api/recitation/text?type=bani&id=31&view=full');
+    assert.equal(response.status, 200);
+    assert.equal(response.payload.data.totalLines, 3);
+    assert.equal(fetches, 0);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test('an API failure without cached text remains an error', async () => {
+  const { call } = createHarness();
+  const previousFetch = global.fetch;
+  global.fetch = async () => ({ ok: false, status: 503 });
+  try {
+    const response = await call('GET', '/api/recitation/text?type=bani&id=31&view=full');
+    assert.equal(response.status, 502);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test('slimVerse reads nested bani and flat ang translations and phonetics', () => {
+  const nested = { verse: { verseId: 5, verse: { unicode: 'ਸਤਿ' }, translation: { en: { bdb: 'Truth' }, pu: { ss: { unicode: 'ਸੱਚ' } } }, transliteration: { english: 'Sat', en: 'SAT' }, pageNo: 4 } };
+  const flat = { verseId: 6, verse: { unicode: 'ਨਾਮ' }, translation: { en: { ssk: 'Name' }, pu: { bdb: { unicode: 'ਨਾਮ ਹੈ' } } }, transliteration: { english: 'Naam' }, pageNo: 9 };
+  const withoutPhonetic = { verseId: 7, verse: { unicode: 'ਸਤਿ' }, pageNo: 10 };
+  assert.deepEqual(slimVerse(nested), { g: 'ਸਤਿ', e: 'Truth', p: 'ਸੱਚ', r: 'Sat', a: 4 });
+  assert.deepEqual(slimVerse(flat), { g: 'ਨਾਮ', e: 'Name', p: 'ਨਾਮ ਹੈ', r: 'Naam', a: 9 });
+  assert.deepEqual(slimVerse(withoutPhonetic), { g: 'ਸਤਿ', e: '', p: '', r: '', a: 10 });
+});
+
+test('phonetic transliteration is kept separate from English translation', () => {
+  const line = slimVerse({ verseId: 1, verse: { unicode: 'ਸਤਿ' }, translation: { en: { bdb: 'Truth' } }, transliteration: { english: 'Sat Naam' }, pageNo: 1 });
+  assert.equal(line.g, 'ਸਤਿ');
+  assert.equal(line.e, 'Truth');
+  assert.equal(line.r, 'Sat Naam');
 });
 
 test('normalizeSource accepts only known types and valid ids', () => {
@@ -123,7 +215,7 @@ test('starting a new recitation ends the one that is live', async () => {
 
 test('rapid taps are applied one at a time without losing any', async () => {
   const { db, call } = createHarness();
-  await db.setSingleton('recitation_text_bani_31', { key: 'bani-31', type: 'bani', id: 31, title: 't', titleEnglish: 't', totalLines: 50, lines: Array.from({ length: 50 }, (_, index) => ({ g: `line ${index}`, e: '', p: '', a: 1 })) });
+  await db.setSingleton('recitation_text_bani_31', { key: 'bani-31', type: 'bani', id: 31, version: 2, title: 't', titleEnglish: 't', totalLines: 50, lines: Array.from({ length: 50 }, (_, index) => ({ g: `line ${index}`, e: '', p: '', a: 1 })) });
   const id = (await call('POST', '/api/recitation/sessions', { body: { sourceType: 'bani', sourceId: 31 } })).payload.data.id;
   await Promise.all(Array.from({ length: 10 }, () => call('POST', `/api/recitation/sessions/${id}/step`, { body: { delta: 1 } })));
   assert.equal((await call('GET', `/api/recitation/sessions/${id}`)).payload.data.currentIndex, 10);

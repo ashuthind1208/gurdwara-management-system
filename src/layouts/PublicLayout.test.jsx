@@ -60,7 +60,12 @@ test('shows the floating Ask a Granthi assistant without adding a navigation lin
   );
 
   expect(screen.getByRole('button', { name: 'Ask a Granthi Ji a question' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Open Gutka Sahib reader' })).toBeInTheDocument();
+  const gutkaLauncher = screen.getByRole('button', { name: 'Open Gutka Sahib reader' });
+  expect(gutkaLauncher).toBeInTheDocument();
+  expect(gutkaLauncher).toHaveClass('fixed');
+  // The navbar supplies the mobile launcher; this floating instance is desktop-only.
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(gutkaLauncher.parentElement).toHaveClass('hidden', 'xl:block');
   expect(screen.queryByRole('link', { name: /ask a granthi/i })).not.toBeInTheDocument();
 });
 
