@@ -1,4 +1,4 @@
-import { getNanakshahiDate, getNanakshahiMonthCalendar, registerNanakshahiMonthStarts } from './punjabiCalendar';
+import { getFallbackNanakshahiObservances, getNanakshahiDate, getNanakshahiMonthCalendar, mergeNanakshahiObservances, registerNanakshahiMonthStarts } from './punjabiCalendar';
 import { NANAKSHAHI_ANNUAL_MONTH_STARTS } from '../constants/nanakshahiMonthStarts';
 
 test('18 October 2026 matches SGPC and the API: 2 Katak 558', () => {
@@ -23,6 +23,34 @@ test('calendar cells follow civil dates across the November DST change', () => {
   const keys = cells.map(({ gregorianDate: d }) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`);
   expect(new Set(keys).size).toBe(30);
   expect(getNanakshahiDate('2026-11-03')).toMatchObject({ day: 18, month: 'Katak' });
+});
+
+test('calendar popup data preserves community event titles and details for the selected date', () => {
+  const observances = [
+    ...getFallbackNanakshahiObservances(),
+    { id: 'community-event-1', date: '2026-11-08', title: 'Sunday Program', titlePa: 'ਐਤਵਾਰ ਦਾ ਪ੍ਰੋਗਰਾਮ', type: 'Community Event', blurb: '10:00 AM · Darbar Hall' }
+  ];
+  const calendar = getNanakshahiMonthCalendar('2026-11-08', observances);
+  const day = calendar.weeks.flat().find((cell) => cell?.gregorianDate?.toISOString().slice(0, 10) === '2026-11-08');
+  expect(day.observances.map((entry) => entry.title)).toEqual(expect.arrayContaining(['Bandi Chhor (Divali)', 'Sunday Program']));
+  expect(day.observances.find((entry) => entry.title === 'Sunday Program').blurb).toContain('Darbar Hall');
+});
+
+test('bundles fixed Gurpurab observances for when the remote holiday feed is empty', () => {
+  const fallback = getFallbackNanakshahiObservances();
+  expect(fallback.find((entry) => entry.date === '2026-11-08')).toMatchObject({ title: 'Bandi Chhor (Divali)', type: 'Holiday' });
+  const calendar = getNanakshahiMonthCalendar('2026-11-08', fallback);
+  const bandiChhor = calendar.weeks.flat().find((cell) => cell?.gregorianDate?.toISOString().slice(0, 10) === '2026-11-08');
+  expect(bandiChhor.observances.some((entry) => entry.title === 'Bandi Chhor (Divali)')).toBe(true);
+});
+
+test('partial remote holiday feeds retain missing local event details without duplicates', () => {
+  const fallback = getFallbackNanakshahiObservances();
+  const remote = [{ ...fallback.find((item) => item.date === '2026-11-08'), id: 'api-bandi', significanceEn: 'Remote details' }];
+  const merged = mergeNanakshahiObservances(remote, fallback);
+  expect(merged.filter((item) => item.date === '2026-11-08' && item.title === 'Bandi Chhor (Divali)')).toHaveLength(1);
+  expect(merged.find((item) => item.date === '2026-11-08').significanceEn).toBe('Remote details');
+  expect(merged.some((item) => item.title === 'Guru Nanak Dev Ji' && item.date === '2026-11-24')).toBe(true);
 });
 
 test('partial API data does not replace verified annual month starts', () => {

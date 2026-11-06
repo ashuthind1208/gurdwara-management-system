@@ -7,6 +7,34 @@
   max-height: min(90dvh, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
 }
 
+.gutka-dialog-reading {
+  height: min(82dvh, 760px);
+  max-height: min(82dvh, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+}
+
+.gutka-gurbani-flow {
+  font-weight: 700;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-align: center;
+  text-align-last: center;
+}
+
+.gutka-desktop-verse-break {
+  display: none;
+}
+
+.gutka-roman-flow {
+  white-space: normal;
+}
+
+@media (min-width: 768px) {
+  .gutka-desktop-verse-break {
+    display: initial;
+  }
+}
+
 @media (min-width: 640px) {
   .gutka-backdrop {
     padding: 24px;
@@ -14,6 +42,11 @@
 
   .gutka-dialog {
     max-height: min(88dvh, 820px);
+  }
+
+  .gutka-dialog-reading {
+    height: min(72dvh, 620px);
+    max-height: min(72dvh, 620px);
   }
 }
 
@@ -24,4 +57,74 @@
 
 .gutka-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.gutka-reading-page {
+  position: relative;
+  transform-origin: center;
+  backface-visibility: hidden;
+  background-image: linear-gradient(90deg, rgba(167,125,62,.09), transparent 8%, transparent 92%, rgba(167,125,62,.07));
+  box-shadow: inset 6px 0 12px -10px #87653d, 3px 3px 0 #e9dfcf, 6px 6px 0 #f4ecdf;
+}
+
+.gutka-book-cover {
+  position: relative;
+  display: flex;
+  min-height: 92px;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(204,163,86,.65);
+  border-radius: 4px 12px 12px 4px;
+  padding: 14px 18px 14px 26px;
+  color: #fff4d8;
+  background: linear-gradient(100deg, #041b37 0 5px, #36577d 6px, #08294e 12px, #103d69 70%, #08294e);
+  box-shadow: 2px 3px 0 #e7dcc5, 4px 5px 0 #c6b48f, 0 6px 12px -5px #0f172a55;
+}
+
+.gutka-book-cover::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 7px 8px 7px 18px;
+  border: 1px solid #d5b16a70;
+  border-radius: 2px 6px 6px 2px;
+}
+
+.gutka-book-cover-evening {
+  background: linear-gradient(100deg, #21152e 0 5px, #75617f 6px, #30223f 12px, #544064 70%, #30223f);
+}
+
+@media (min-width: 768px) {
+  .gutka-dialog-reading {
+    max-width: 620px;
+  }
+
+  .gutka-dialog-reading .gutka-reading-page {
+    max-width: 520px;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+}
+
+.gutka-reading-page[data-direction="next"] {
+  animation: gutka-page-turn-next 280ms cubic-bezier(.2,.72,.24,1) both;
+}
+
+.gutka-reading-page[data-direction="previous"] {
+  animation: gutka-page-turn-previous 280ms cubic-bezier(.2,.72,.24,1) both;
+}
+
+@keyframes gutka-page-turn-next {
+  from { opacity: .72; transform: perspective(1100px) rotateY(-7deg) translateX(12px); }
+  to { opacity: 1; transform: perspective(1100px) rotateY(0) translateX(0); }
+}
+
+@keyframes gutka-page-turn-previous {
+  from { opacity: .72; transform: perspective(1100px) rotateY(7deg) translateX(-12px); }
+  to { opacity: 1; transform: perspective(1100px) rotateY(0) translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gutka-reading-page[data-direction] { animation: none; }
 }

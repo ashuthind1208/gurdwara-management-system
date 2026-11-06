@@ -23,11 +23,12 @@ import {
 } from '@heroicons/react/24/outline';
 import siteNavigationService, { DEFAULT_SITE_NAVIGATION } from '../../services/siteNavigationService';
 import WebsiteNavigationItem from './WebsiteNavigationItem';
+import FloatingGutkaReader from '../recitation/FloatingGutkaReader';
 import { siteConfig } from '../../constants/siteConfig';
 import NotificationPermissionPrompt from '../common/NotificationPermissionPrompt';
 import notoSansGurmukhiRegular from '../../assets/fonts/NotoSansGurmukhi-Regular.ttf';
 import notoSansGurmukhiBold from '../../assets/fonts/NotoSansGurmukhi-Bold.ttf';
-import { getNanakshahiDate, getNanakshahiMonthCalendar, getUpcomingPunjabiObservances } from '../../utils/punjabiCalendar';
+import { getFallbackNanakshahiObservances, getNanakshahiDate, getNanakshahiMonthCalendar, getUpcomingPunjabiObservances, mergeNanakshahiObservances } from '../../utils/punjabiCalendar';
 import streamingService from '../../services/streamingService';
 import nanakshahiHolidayService from '../../services/nanakshahiHolidayService';
 import sponsorService from '../../services/sponsorService';
@@ -619,7 +620,8 @@ const Navbar = () => {
         };
       });
 
-    return [...nanakshahiObservances, ...eventObservances, ...bookingObservances];
+    const calendarObservances = mergeNanakshahiObservances(nanakshahiObservances, getFallbackNanakshahiObservances());
+    return [...calendarObservances, ...eventObservances, ...bookingObservances];
   }, [nanakshahiObservances, publicCalendarBookings, publicCalendarEvents]);
   const nanakshahiMonthCalendar = useMemo(
     () => getNanakshahiMonthCalendar(calendarViewDate, combinedNanakshahiObservances),
@@ -2928,6 +2930,7 @@ const Navbar = () => {
                 <CalendarDaysIcon className="h-3.5 w-3.5" />
                 <span className="hidden text-[10px] font-bold md:inline">Calendar</span>
               </button>
+              <div className="xl:hidden"><FloatingGutkaReader placement="navbar" /></div>
               <button
                   type="button"
                   onPointerDown={(event) => {
@@ -2941,12 +2944,12 @@ const Navbar = () => {
                     openCompactStreams();
                   }}
                   onClick={openCompactStreams}
-                  className="inline-flex h-7 min-w-[3.25rem] shrink-0 items-center justify-center gap-1 rounded-full border border-brand-saffron bg-brand-saffron px-2.5 py-1 text-[10px] font-extrabold text-brand-blue shadow-[0_6px_14px_rgba(245,166,35,0.35)] touch-manipulation select-none"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-brand-saffron bg-brand-saffron text-brand-blue shadow-[0_4px_12px_rgba(245,166,35,0.3)] touch-manipulation select-none md:h-7 md:w-auto md:gap-1 md:px-2.5 md:py-1"
                   aria-label="Watch live stream"
                   title="Live"
                 >
-                  <LiveStreamGlyph className="h-3.5 w-3.5" />
-                  <span>LIVE</span>
+                  <LiveStreamGlyph className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                  <span className="hidden text-[9px] font-bold md:inline xl:text-[10px]">LIVE</span>
               </button>
             </div>
           </div>
