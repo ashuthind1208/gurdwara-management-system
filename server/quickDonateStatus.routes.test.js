@@ -148,6 +148,52 @@ test('guest verification, signed webhook and reconciliation share a stable paid 
   assert.equal(deps.checkoutReads.length, 0);
 });
 
+test('wallet reconciliation cannot redirect verified campaign or anonymous donor attribution through a pending row', async () => {
+  const deps = setup({ pending: [{
+    id: 'quick-pending', sessionId: intent.id, paymentProvider: 'STRIPE',
+    campaignId: 99, campaignName: 'Forged campaign',
+    donorName: 'Forged donor', donorEmail: 'forged@example.com'
+  }] });
+  const result = await deps.reconcile();
+  const donation = deps.ledger.get('stripe-pi_guest');
+  assert.equal(result.reconciled, 1);
+  assert.equal(donation.sourcePendingId, intent.metadata.pending_id);
+  assert.equal(donation.campaignId, 7);
+  assert.equal(donation.campaignName, campaign.name);
+  assert.equal(donation.donorName, 'Anonymous');
+  assert.equal(donation.donorEmail, '');
+  assert.equal(donation.source, 'stripe-reconcile');
+  assert.equal(deps.totals[0].campaignId, 7);
+  assert.equal(deps.totals[0].campaignName, campaign.name);
+  assert.deepEqual(deps.removed, ['quick-pending']);
+  assert.equal(deps.checkoutReads.length, 0);
+});
+
+for (const pendingId of ['forged-pending', undefined]) {
+  test(`wallet reconciliation rejects a pending row not bound by Stripe metadata (${pendingId})`, async () => {
+    const deps = setup({ pending: [{
+      id: pendingId, sessionId: intent.id, paymentProvider: 'STRIPE', campaignId: 99
+    }] });
+    const result = await deps.reconcile();
+    assert.equal(result.reconciled, 0);
+    assert.equal(deps.ledger.size, 0);
+    assert.equal(deps.totals.length, 0);
+    assert.equal(deps.removed.length, 0);
+    assert.equal(deps.checkoutReads.length, 0);
+  });
+}
+
+test('wallet reconciliation compares a numeric pending ID using its string representation', async () => {
+  const deps = setup({
+    intent: { metadata: { ...intent.metadata, pending_id: '123' } },
+    pending: [{ id: 123, sessionId: intent.id, paymentProvider: 'STRIPE', campaignId: 99 }]
+  });
+  await deps.reconcile();
+  assert.equal(deps.ledger.get('stripe-pi_guest').sourcePendingId, '123');
+  assert.equal(deps.ledger.get('stripe-pi_guest').campaignId, 7);
+  assert.deepEqual(deps.removed, [123]);
+});
+
 for (const override of [{ livemode: true }, { currency: 'usd' }, { metadata: {} }, { status: 'processing' }]) {
   test(`does not reconcile unsafe or incomplete wallet intents (${JSON.stringify(override)})`, async () => {
     const deps = setup({ intent: override, pending: [{ id: 'quick-pending', sessionId: intent.id, paymentProvider: 'STRIPE' }] });
@@ -172,9 +218,20 @@ test('rejects invalid webhook signatures without recording a donation', async ()
 });
 
 test('continues reconciling legacy hosted-checkout pending records', async () => {
-  const deps = setup({ pending: [{ id: 'legacy-pending', sessionId: 'cs_fixture', paymentProvider: 'STRIPE', campaignId: 7 }] });
+  const deps = setup({ pending: [{
+    id: 'legacy-pending', sessionId: 'cs_fixture', paymentProvider: 'STRIPE',
+    campaignId: 8, campaignName: 'Legacy campaign',
+    donorName: 'Legacy donor', donorEmail: 'legacy@example.com'
+  }] });
   await deps.reconcile();
   assert.deepEqual(deps.checkoutReads, ['cs_fixture']);
-  assert.equal(deps.ledger.get('stripe-cs_fixture').amount, 5);
+  const donation = deps.ledger.get('stripe-cs_fixture');
+  assert.equal(donation.amount, 5);
+  assert.equal(donation.sourcePendingId, 'legacy-pending');
+  assert.equal(donation.campaignId, 8);
+  assert.equal(donation.campaignName, 'Legacy campaign');
+  assert.equal(donation.donorName, 'Legacy donor');
+  assert.equal(donation.donorEmail, 'legacy@example.com');
+  assert.equal(donation.source, 'stripe-reconcile');
   assert.deepEqual(deps.removed, ['legacy-pending']);
 });

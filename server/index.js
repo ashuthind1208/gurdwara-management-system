@@ -5853,6 +5853,8 @@ const reconcilePaidPendingDonations = async () => {
         const paymentIntent = await stripeClient.paymentIntents.retrieve(sessionId);
         if (paymentIntent.status !== 'succeeded' || paymentIntent.livemode !== false
           || paymentIntent.currency !== 'cad' || paymentIntent.metadata?.quick_donate !== 'true') continue;
+        const stripePendingId = String(paymentIntent.metadata?.pending_id || '').trim();
+        if (!stripePendingId || stripePendingId !== String(pending.id ?? '').trim()) continue;
         donationRecord = mapQuickDonatePaymentIntent(paymentIntent, `reconcile-${paymentIntent.id}`);
       } else {
         const session = await stripeClient.checkout.sessions.retrieve(sessionId);
@@ -5862,15 +5864,17 @@ const reconcilePaidPendingDonations = async () => {
         donationRecord = mapWebhookDonation(session, `reconcile-${session.id}`);
       }
 
-      donationRecord = {
-        ...donationRecord,
-        sourcePendingId: String(pending.id || ''),
-        campaignId: Number.isFinite(Number(pending.campaignId)) ? Number(pending.campaignId) : null,
-        campaignName: String(pending.campaignName || '').trim() || donationRecord.campaignName,
-        donorName: String(pending.donorName || '').trim() || donationRecord.donorName,
-        donorEmail: String(pending.donorEmail || '').trim() || donationRecord.donorEmail,
-        source: 'stripe-reconcile'
-      };
+      donationRecord = sessionId.startsWith('pi_')
+        ? { ...donationRecord, source: 'stripe-reconcile' }
+        : {
+          ...donationRecord,
+          sourcePendingId: String(pending.id || ''),
+          campaignId: Number.isFinite(Number(pending.campaignId)) ? Number(pending.campaignId) : null,
+          campaignName: String(pending.campaignName || '').trim() || donationRecord.campaignName,
+          donorName: String(pending.donorName || '').trim() || donationRecord.donorName,
+          donorEmail: String(pending.donorEmail || '').trim() || donationRecord.donorEmail,
+          source: 'stripe-reconcile'
+        };
 
       const persistedDonation = await upsertDonation(donationRecord);
       await syncCampaignRaisedTotal({
