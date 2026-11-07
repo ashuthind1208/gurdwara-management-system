@@ -701,6 +701,29 @@ const donationService = {
 
   resolveStripePaymentDetails,
 
+  getQuickDonateConfig: async () => {
+    const response = await fetchJson('/api/stripe/quick-donate-config');
+    return serviceResponse(response.data || {});
+  },
+
+  verifyQuickDonation: async ({ paymentIntentId, clientSecret }) => {
+    const response = await fetchJson('/api/stripe/quick-donate-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentIntentId, clientSecret })
+    });
+    return serviceResponse(response.data || {});
+  },
+
+  createQuickDonatePaymentIntent: async ({ campaignId, amountCents }) => {
+    const response = await fetchJson('/api/stripe/create-quick-donate-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaignId, amountCents })
+    });
+    return serviceResponse(response.data || {});
+  },
+
   initiateDonation: async (payload) => {
     const campaignId = Number(payload.campaignId);
     const campaigns = await readCampaignsFromServer();

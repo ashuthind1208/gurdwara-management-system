@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const { URL } = require('url');
 const Stripe = require('stripe');
 const crypto = require('crypto');
+const { verifyQuickDonation } = require('./quickDonateStatus');
 const { createDonationSms, shouldSendReconciledZeffySms, zeffySmsConsent } = require('./donationSms');
 const { jsPDF } = require('jspdf');
 const autoTable = require('jspdf-autotable').default;
@@ -173,6 +174,7 @@ const resolveServerPort = () => {
 
 const port = resolveServerPort();
 const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || '').trim();
+const stripePublishableKey = String(process.env.STRIPE_PUBLISHABLE_KEY || '').trim();
 const stripeWebhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 const stripeCurrency = String(process.env.STRIPE_CURRENCY || 'cad').toLowerCase();
 const zeffyApiKey = String(process.env.ZEFFY_API_KEY || '').trim();
@@ -5846,21 +5848,27 @@ const reconcilePaidPendingDonations = async () => {
     checked += 1;
 
     try {
-      const session = await stripeClient.checkout.sessions.retrieve(sessionId);
-      const isPaid = String(session?.status || '').toLowerCase() === 'complete'
-        && String(session?.payment_status || '').toLowerCase() === 'paid';
-
-      if (!isPaid) {
-        continue;
+      let donationRecord;
+      if (sessionId.startsWith('pi_')) {
+        const paymentIntent = await stripeClient.paymentIntents.retrieve(sessionId);
+        if (paymentIntent.status !== 'succeeded' || paymentIntent.livemode !== false
+          || paymentIntent.currency !== 'cad' || paymentIntent.metadata?.quick_donate !== 'true') continue;
+        donationRecord = mapQuickDonatePaymentIntent(paymentIntent, `reconcile-${paymentIntent.id}`);
+      } else {
+        const session = await stripeClient.checkout.sessions.retrieve(sessionId);
+        const isPaid = String(session?.status || '').toLowerCase() === 'complete'
+          && String(session?.payment_status || '').toLowerCase() === 'paid';
+        if (!isPaid) continue;
+        donationRecord = mapWebhookDonation(session, `reconcile-${session.id}`);
       }
 
-      const donationRecord = {
-        ...mapWebhookDonation(session, `reconcile-${session.id}`),
+      donationRecord = {
+        ...donationRecord,
         sourcePendingId: String(pending.id || ''),
         campaignId: Number.isFinite(Number(pending.campaignId)) ? Number(pending.campaignId) : null,
-        campaignName: String(pending.campaignName || '').trim() || mapWebhookDonation(session, `reconcile-${session.id}`).campaignName,
-        donorName: String(pending.donorName || '').trim() || mapWebhookDonation(session, `reconcile-${session.id}`).donorName,
-        donorEmail: String(pending.donorEmail || '').trim() || mapWebhookDonation(session, `reconcile-${session.id}`).donorEmail,
+        campaignName: String(pending.campaignName || '').trim() || donationRecord.campaignName,
+        donorName: String(pending.donorName || '').trim() || donationRecord.donorName,
+        donorEmail: String(pending.donorEmail || '').trim() || donationRecord.donorEmail,
         source: 'stripe-reconcile'
       };
 
@@ -5933,6 +5941,31 @@ const mapWebhookDonation = (session, eventId) => {
     createdAt: new Date((session.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     emailSent: true,
     source: 'stripe-webhook'
+  };
+};
+
+const mapQuickDonatePaymentIntent = (paymentIntent, eventId) => {
+  const metadata = paymentIntent.metadata || {};
+  const amountCents = Number(paymentIntent.amount_received || paymentIntent.amount || 0);
+  const campaignId = Number(metadata.campaign_id || 0);
+  return {
+    id: `stripe-${paymentIntent.id}`,
+    receiptId: `STR-${String(paymentIntent.id).slice(-8).toUpperCase()}`,
+    sourcePendingId: metadata.pending_id || '',
+    campaignId: Number.isFinite(campaignId) && campaignId > 0 ? campaignId : null,
+    campaignName: metadata.campaign_name || 'General Donation',
+    donorName: 'Anonymous',
+    donorEmail: '',
+    amount: amountCents > 0 ? amountCents / 100 : 0,
+    frequency: 'one-time',
+    paymentProvider: 'STRIPE',
+    paymentStatus: paymentIntent.status === 'succeeded' ? 'PAID' : 'PENDING',
+    gatewayTransactionId: paymentIntent.id,
+    stripeSessionId: '',
+    stripeEventId: eventId,
+    createdAt: new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    emailSent: false,
+    source: 'stripe-wallet-webhook'
   };
 };
 
@@ -9153,6 +9186,108 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (requestUrl.pathname === '/api/stripe/quick-donate-config' && request.method === 'GET') {
+    const configured = stripeSecretKey.startsWith('sk_test_') && stripePublishableKey.startsWith('pk_test_');
+    sendJson(response, 200, {
+      ok: true,
+      data: { configured, publishableKey: configured ? stripePublishableKey : '' }
+    });
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/stripe/quick-donate-status' && request.method === 'POST') {
+    try {
+      const body = await parseJsonObjectBody(request, { maxBytes: 2048, allowEmpty: false });
+      ensureNoUnknownKeys(body, ['paymentIntentId', 'clientSecret']);
+      const data = await verifyQuickDonation(body, {
+        stripe: requireStripeClient(),
+        persist: async (intent) => {
+          const donation = await upsertDonation(mapQuickDonatePaymentIntent(intent, `verified-${intent.id}`));
+          await syncCampaignRaisedTotal({ campaignId: donation?.campaignId, campaignName: donation?.campaignName });
+          if (intent.metadata.pending_id) await removePendingDonation(intent.metadata.pending_id);
+        }
+      });
+      sendJson(response, 200, { ok: true, data });
+    } catch (error) {
+      sendJson(response, error.status || 500, { ok: false, message: 'Payment could not be verified. Please contact the Gurdwara before paying again.' });
+    }
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/stripe/create-quick-donate-intent' && request.method === 'POST') {
+    try {
+      if (!stripeSecretKey.startsWith('sk_test_') || !stripePublishableKey.startsWith('pk_test_')) {
+        const error = new Error('Stripe test-mode keys are not fully configured.');
+        error.status = 503;
+        throw error;
+      }
+      const stripeClient = requireStripeClient();
+      const body = await parseJsonObjectBody(request, { maxBytes: maxJsonBodyBytes, allowEmpty: false });
+      ensureNoUnknownKeys(body, ['campaignId', 'amountCents']);
+      const campaignId = readNumberField(body, 'campaignId', { required: true, integer: true, min: 1, max: 1000000000 });
+      const amountCents = readNumberField(body, 'amountCents', { required: true, integer: true, min: 100, max: 1000000 });
+      const amount = amountCents / 100;
+
+      const campaigns = await getDonationCampaigns();
+      const campaign = campaigns.find((entry) => Number(entry.id) === campaignId);
+      const campaignProvider = String(campaign?.paymentProvider || campaign?.payment_provider || 'STRIPE').toUpperCase();
+      if (campaign && campaignProvider !== 'STRIPE') {
+        const error = new Error('Quick Donate wallets require a campaign with Stripe selected as its payment provider.');
+        error.status = 409;
+        throw error;
+      }
+      if (!campaign || campaign.isActive !== true || campaign.isClosed !== false) {
+        const error = new Error('This donation campaign is not available.');
+        error.status = 404;
+        throw error;
+      }
+      const raised = Number(campaign.raised || 0);
+      const target = Number(campaign.target || 0);
+      if (target > 0 && raised >= target) {
+        const error = new Error('This donation campaign has reached its goal.');
+        error.status = 409;
+        throw error;
+      }
+
+      const pendingId = `quick-${crypto.randomUUID()}`;
+      const paymentIntent = await stripeClient.paymentIntents.create({
+        amount: amountCents,
+        currency: 'cad',
+        payment_method_types: ['card'],
+        description: `${String(campaign.name || 'Gurdwara')} donation`,
+        metadata: {
+          quick_donate: 'true',
+          pending_id: pendingId,
+          campaign_id: String(campaignId),
+          campaign_name: String(campaign.name || 'General Donation')
+        }
+      });
+      await createPendingDonation({
+        id: pendingId,
+        campaignId,
+        campaignName: String(campaign.name || 'General Donation'),
+        donorName: 'Anonymous',
+        donorEmail: '',
+        amount,
+        frequency: 'one-time',
+        paymentProvider: 'STRIPE',
+        sessionId: paymentIntent.id,
+        createdAt: new Date().toISOString()
+      });
+
+      sendJson(response, 200, {
+        ok: true,
+        data: { pendingId, paymentIntentId: paymentIntent.id, clientSecret: paymentIntent.client_secret, amount, amountCents }
+      });
+    } catch (error) {
+      sendJson(response, error.status || 500, {
+        ok: false,
+        message: error.message || 'Unable to start wallet donation.'
+      });
+    }
+    return;
+  }
+
   if (requestUrl.pathname === '/api/stripe/create-checkout-session' && request.method === 'POST') {
     try {
       const stripeClient = requireStripeClient();
@@ -9527,6 +9662,18 @@ const server = http.createServer(async (request, response) => {
           campaignId: persistedDonation?.campaignId,
           campaignName: persistedDonation?.campaignName
         });
+      } else if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object;
+        if (paymentIntent.metadata?.quick_donate === 'true' && paymentIntent.livemode === false
+          && paymentIntent.currency === 'cad') {
+          const donationRecord = mapQuickDonatePaymentIntent(paymentIntent, event.id);
+          const persistedDonation = await upsertDonation(donationRecord);
+          await syncCampaignRaisedTotal({
+            campaignId: persistedDonation?.campaignId,
+            campaignName: persistedDonation?.campaignName
+          });
+          if (donationRecord.sourcePendingId) await removePendingDonation(donationRecord.sourcePendingId);
+        }
       }
 
       sendJson(response, 200, { received: true });

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import QuickDonateQrButton from './QuickDonateQrButton';
 import { useOutletContext } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1091,6 +1092,7 @@ const AdminDonationsPage = () => {
             >
               <EyeIcon className="h-4 w-4" /> Go To Donation Board
             </a>
+            <QuickDonateQrButton campaigns={campaigns} />
           </div>
         </div>
         <div className="mt-3">
@@ -1857,6 +1859,7 @@ const AdminDonationsPage = () => {
                       <option value="ZEFFY">Zeffy</option>
                     </select>
                   </label>
+                  {createPaymentProvider === 'STRIPE' ? <p className="text-xs leading-relaxed text-slate-600 sm:col-span-2">Apple Pay / Google Pay Quick Donate QR and LED checkout uses the Gurdwara’s server-configured Stripe account. Keep the Stripe secret key in server environment settings; do not enter it here. The optional link and Buy Button fields below are for the existing hosted-checkout flow.</p> : null}
                   <label className="text-sm font-semibold text-slate-700 sm:col-span-2">{createPaymentProvider === 'ZEFFY' ? 'Zeffy Donation Form Link' : createPaymentProvider === 'PAYPAL' ? 'PayPal Checkout Link' : 'Stripe Checkout Link (optional)'}
                     <input
                       type="url"
@@ -1873,10 +1876,10 @@ const AdminDonationsPage = () => {
                   ) : null}
                   {createPaymentProvider === 'STRIPE' ? (
                     <>
-                      <label className="text-sm font-semibold text-slate-700">Stripe Buy Button ID (optional)
+                      <label className="text-sm font-semibold text-slate-700">Stripe Buy Button ID (hosted checkout, optional)
                         <input {...form.register('stripeBuyButtonId')} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-blue-100" placeholder="buy_btn_..." />
                       </label>
-                      <label className="text-sm font-semibold text-slate-700">Stripe Publishable Key (optional)
+                      <label className="text-sm font-semibold text-slate-700">Stripe Publishable Key (hosted checkout, optional)
                         <input {...form.register('stripePublishableKey')} className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-blue-100" placeholder="pk_test_... or pk_live_..." />
                       </label>
                     </>
@@ -2141,6 +2144,7 @@ const AdminDonationsPage = () => {
               <label className="text-sm">Target
                 <input type="number" min="0" step="0.01" {...editForm.register('target', { required: true, valueAsNumber: true, min: 0 })} required className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-brand-blue" />
               </label>
+              {editPaymentProvider === 'STRIPE' ? <p className="text-xs leading-relaxed text-slate-600 sm:col-span-2">Apple Pay / Google Pay Quick Donate QR and LED checkout uses the Gurdwara’s server-configured Stripe account. Keep the Stripe secret key in server environment settings; do not enter it here. The optional link and Buy Button fields below are for the existing hosted-checkout flow.</p> : null}
               <label className="text-sm sm:col-span-2">Description
                 <textarea rows={2} {...editForm.register('description')} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-brand-blue" />
               </label>
@@ -2149,10 +2153,10 @@ const AdminDonationsPage = () => {
               </label>
               {editPaymentProvider === 'STRIPE' ? (
                 <>
-                  <label className="text-sm">Stripe Buy Button ID (optional)
+                  <label className="text-sm">Stripe Buy Button ID (hosted checkout, optional)
                     <input {...editForm.register('stripeBuyButtonId')} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-brand-blue" />
                   </label>
-                  <label className="text-sm">Stripe Publishable Key (optional)
+                  <label className="text-sm">Stripe Publishable Key (hosted checkout, optional)
                     <input {...editForm.register('stripePublishableKey')} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none transition focus:border-brand-blue" />
                   </label>
                 </>

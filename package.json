@@ -9,6 +9,8 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@napi-rs/canvas": "^1.0.10",
+    "@stripe/react-stripe-js": "^7.0.1",
+    "@stripe/stripe-js": "^10.2.1",
     "@tanstack/react-query": "^5.101.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
