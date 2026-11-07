@@ -1,15 +1,11 @@
 import { registerNanakshahiMonthStarts } from '../utils/punjabiCalendar';
 
-const DEFAULT_GURPURAB_HOLIDAYS_API_URL = 'https://api.gurpurab.com/v1/holidays';
+const GURPURAB_HOLIDAYS_API_URL = '/api/gurpurab/holidays';
+const GURPURAB_UPCOMING_API_URL = '/api/gurpurab/upcoming';
 const REQUEST_TIMEOUT_MS = 12000;
 const YEAR_CACHE_TTL_MS = 60 * 60 * 1000;
 const EMPTY_YEAR_CACHE_TTL_MS = 5 * 60 * 1000;
 const yearHolidayCache = new Map();
-
-const resolveApiBaseUrl = () => {
-  const configured = String(process.env.REACT_APP_GURPURAB_HOLIDAYS_API_URL || '').trim();
-  return configured || DEFAULT_GURPURAB_HOLIDAYS_API_URL;
-};
 
 const withTimeout = async (url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) => {
   const controller = new AbortController();
@@ -233,8 +229,7 @@ const fetchYear = async (year) => {
   }
 
   const pending = (async () => {
-  const baseUrl = resolveApiBaseUrl();
-  const response = await withTimeout(`${baseUrl}?year=${encodeURIComponent(String(year))}`);
+  const response = await withTimeout(`${GURPURAB_HOLIDAYS_API_URL}?year=${encodeURIComponent(String(year))}`);
 
   if (!response.ok) {
     throw new Error(`Gurpurab holidays request failed for year ${year} with status ${response.status}`);
@@ -271,9 +266,8 @@ const getHolidaysForDateWindow = async (anchorDate = new Date()) => {
 };
 
 const getUpcomingHolidays = async (limit = 5) => {
-  const baseUrl = resolveApiBaseUrl();
   const safeLimit = Math.max(1, Number(limit) || 5);
-  const response = await withTimeout(`${baseUrl}/upcoming?limit=${encodeURIComponent(String(safeLimit))}`);
+  const response = await withTimeout(`${GURPURAB_UPCOMING_API_URL}?limit=${encodeURIComponent(String(safeLimit))}`);
 
   if (!response.ok) {
     throw new Error(`Gurpurab upcoming holidays request failed with status ${response.status}`);
