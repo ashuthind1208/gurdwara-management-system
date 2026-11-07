@@ -7,6 +7,7 @@ const { URL } = require('url');
 const Stripe = require('stripe');
 const crypto = require('crypto');
 const { verifyQuickDonation } = require('./quickDonateStatus');
+const { handleGurpurabRequest } = require('./gurpurabProxy');
 const { createDonationSms, shouldSendReconciledZeffySms, zeffySmsConsent } = require('./donationSms');
 const { jsPDF } = require('jspdf');
 const autoTable = require('jspdf-autotable').default;
@@ -6424,6 +6425,16 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === 'OPTIONS') {
     sendJson(response, 204, {});
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/gurpurab/holidays' || requestUrl.pathname === '/api/gurpurab/upcoming') {
+    const result = await handleGurpurabRequest(requestUrl, {
+      method: request.method,
+      fetchImpl: fetch,
+      baseUrl: process.env.GURPURAB_HOLIDAYS_API_URL || undefined
+    });
+    sendJson(response, result.status, result.payload);
     return;
   }
 
