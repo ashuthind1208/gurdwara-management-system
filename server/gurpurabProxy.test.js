@@ -38,11 +38,19 @@ test('rejects invalid years, limits, and methods without contacting provider', a
   assert.equal(calls, 0);
 });
 
-test('maps provider payment and service failures to useful same-origin errors', async () => {
+test('gracefully falls back to local observances when the provider requires payment', async () => {
   const payment = await handleGurpurabRequest(new URL('http://site/api/gurpurab/holidays?year=562'), { fetchImpl: async () => jsonResponse(402, {}) });
+  assert.equal(payment.status, 200);
+  assert.deepEqual(payment.payload.holidays, []);
+  assert.equal(payment.payload.providerUnavailable, true);
+  assert.match(payment.payload.message, /local Nanakshahi observances remain available/i);
+  const cached = await handleGurpurabRequest(new URL('http://site/api/gurpurab/holidays?year=562'), { fetchImpl: async () => { throw new Error('must use cached fallback'); } });
+  assert.equal(cached.status, 200);
+  assert.equal(cached.cached, true);
+});
+
+test('maps other provider failures to a same-origin gateway error', async () => {
   const failed = await handleGurpurabRequest(new URL('http://site/api/gurpurab/holidays?year=563'), { fetchImpl: async () => jsonResponse(500, {}) });
-  assert.equal(payment.status, 503);
-  assert.match(payment.payload.message, /provider is currently unavailable/i);
   assert.equal(failed.status, 502);
 });
 

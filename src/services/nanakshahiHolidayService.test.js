@@ -29,3 +29,8 @@ test('loads upcoming observances through the same-origin backend endpoint', asyn
   expect(fetchMock).toHaveBeenCalledWith('/api/gurpurab/upcoming?limit=3', expect.objectContaining({ signal: expect.anything() }));
   expect(upcoming[0].gregorianDate).toBe('2026-11-06');
 });
+
+test('accepts a degraded proxy response so the UI can use local Nanakshahi fallbacks without a failed request', async () => {
+  jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ holidays: [], providerUnavailable: true, message: 'Local fallback is active.' }) });
+  await expect(nanakshahiHolidayService.getHolidaysForDateWindow(new Date(2030, 10, 6))).resolves.toEqual([]);
+});

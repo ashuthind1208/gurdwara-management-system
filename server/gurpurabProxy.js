@@ -37,7 +37,16 @@ const requestHolidayData = async ({ resource, value, fetchImpl = global.fetch, b
         signal: controller.signal
       });
       if (!response.ok) {
-        return { status: response.status === 402 ? 503 : 502, payload: { ok: false, message: response.status === 402 ? 'Gurpurab data provider is currently unavailable.' : 'Unable to retrieve holiday data.' } };
+        if (response.status === 402) {
+          const fallbackPayload = {
+            holidays: [],
+            providerUnavailable: true,
+            message: 'Gurpurab data provider is currently unavailable. Local Nanakshahi observances remain available.'
+          };
+          cache.set(key, { data: fallbackPayload, fetchedAt: Date.now() });
+          return { status: 200, payload: fallbackPayload, cached: false };
+        }
+        return { status: 502, payload: { ok: false, message: 'Unable to retrieve holiday data.' } };
       }
       const payload = await response.json();
       if (!payload || !Array.isArray(payload.holidays)) {
