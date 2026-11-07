@@ -23,6 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import siteNavigationService, { DEFAULT_SITE_NAVIGATION } from '../../services/siteNavigationService';
 import WebsiteNavigationItem from './WebsiteNavigationItem';
+import WeatherRibbon from './WeatherRibbon';
 import FloatingGutkaReader from '../recitation/FloatingGutkaReader';
 import { siteConfig } from '../../constants/siteConfig';
 import NotificationPermissionPrompt from '../common/NotificationPermissionPrompt';
@@ -2635,6 +2636,7 @@ const Navbar = () => {
               </div>
             </div>
             <div className="ml-auto flex items-center gap-3">
+              <WeatherRibbon address={branding.address || siteConfig.contact.address} />
               {!isAuthenticated ? (
                 <Link to={getBecomeMemberLoginTarget('/family-dashboard')} onClick={handleBecomeMemberClick} className="my-1 rounded-full border border-brand-saffron bg-brand-saffron px-3 py-1 text-[11px] font-extrabold text-brand-navy shadow-[0_8px_18px_rgba(245,166,35,0.4)] transition hover:bg-amber-300 hover:shadow-[0_0_18px_rgba(245,166,35,0.55)]">Become Member</Link>
               ) : null}
@@ -2955,6 +2957,7 @@ const Navbar = () => {
           </div>
 
           <div className="relative z-[245] flex items-center justify-end gap-1.5">
+            <WeatherRibbon address={branding.address || siteConfig.contact.address} />
             {isAuthenticated ? (
               <button
                 type="button"
