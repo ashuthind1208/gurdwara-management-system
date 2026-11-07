@@ -17,6 +17,9 @@ const BookingsPage = lazy(() => import('../pages/Bookings/BookingsPage'));
 const SevaPage = lazy(() => import('../pages/Seva/SevaPage'));
 const FamilyDashboardPage = lazy(() => import('../pages/Family/FamilyDashboardPage'));
 const DonationPage = lazy(() => import('../pages/Donation/DonationPage'));
+const QuickDonatePage = lazy(() => import('../pages/Donation/QuickDonatePage'));
+const QuickDonateBoardPage = lazy(() => import('../pages/Donation/QuickDonateBoardPage'));
+const QuickDonateSuccessPage = lazy(() => import('../pages/Donation/QuickDonateSuccessPage'));
 const KidsLearningPage = lazy(() => import('../pages/KidsLearning/KidsLearningPage'));
 const DonationDisplayBoardPage = lazy(() => import('../pages/Donation/DonationDisplayBoardPage'));
 const EventCalendarBoardPage = lazy(() => import('../pages/Events/EventCalendarBoardPage'));
@@ -109,6 +112,9 @@ const AppRoutes = () => {
         </Route>
 
         <Route path="/donationsuccess" element={<DonationSuccessPage />} />
+        <Route path="/quick-donate" element={<QuickDonatePage />} />
+        <Route path="/quick-donate-board" element={<LedEmergencyGuard><QuickDonateBoardPage /></LedEmergencyGuard>} />
+        <Route path="/quick-donate/success" element={<QuickDonateSuccessPage />} />
 
         <Route path="/donation-board" element={<LedEmergencyGuard><DonationDisplayBoardPage /></LedEmergencyGuard>} />
         <Route path="/event-calendar-board" element={<LedEmergencyGuard><EventCalendarBoardPage /></LedEmergencyGuard>} />
