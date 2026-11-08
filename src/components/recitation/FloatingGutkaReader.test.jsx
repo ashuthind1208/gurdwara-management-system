@@ -67,7 +67,7 @@ test('reads fixed multi-line pages with connected Gurbani, phonetics and page-le
   expect(screen.queryByText('ਅਰਥ 1')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'English', exact: true })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Punjabi', exact: true })).not.toBeInTheDocument();
-  expect(screen.getByTestId('gutka-reader-content')).toHaveClass('gutka-scroll', 'min-h-0', 'flex-1', 'overflow-y-auto');
+  expect(screen.getByTestId('gutka-reader-content')).toHaveClass('gutka-reader-viewport', 'min-h-0', 'flex-1', 'overflow-hidden');
   const readingDialog = screen.getByRole('dialog', { name: 'Japji Sahib' });
   expect(readingDialog).toHaveClass('gutka-dialog-reading');
   expect(within(readingDialog).queryByRole('combobox', { name: 'Lines per page' })).not.toBeInTheDocument();
@@ -99,19 +99,19 @@ test('reads fixed multi-line pages with connected Gurbani, phonetics and page-le
 });
 
 test('swiping horizontally turns the page forward', async () => {
-  recitationService.getText.mockResolvedValue({ titleEnglish: 'Japji Sahib', totalLines: 16, lines: Array.from({ length: 16 }, (_, index) => ({ g: `Verse ${index + 1}`, r: `Roman ${index + 1}`, a: 1 })) });
+  recitationService.getText.mockResolvedValue({ titleEnglish: 'Japji Sahib', totalLines: 24, lines: Array.from({ length: 24 }, (_, index) => ({ g: `Verse ${index + 1}`, r: `Roman ${index + 1}`, a: 1 })) });
   setup();
   await userEvent.click(screen.getByRole('button', { name: 'Open Gutka Sahib reader' }));
   await userEvent.click(within(screen.getByRole('region', { name: 'Nitnem prayers' })).getByRole('button', { name: /Japji Sahib/ }));
   const content = await screen.findByTestId('gutka-reader-content');
-  expect(await screen.findByText('Verse 8')).toBeInTheDocument();
-  expect(screen.getByText('Lines 1–8 of 16 · Page 1')).toBeInTheDocument();
+  expect(await screen.findByText('Verse 12')).toBeInTheDocument();
+  expect(screen.getByText('Lines 1–12 of 24 · Page 1')).toBeInTheDocument();
   fireEvent.touchStart(content, { changedTouches: [{ clientX: 280, clientY: 260 }] });
   fireEvent.touchEnd(content, { changedTouches: [{ clientX: 120, clientY: 268 }] });
-  expect(await screen.findByText('Verse 9')).toBeInTheDocument();
-  expect(screen.getByText('Lines 9–16 of 16 · Page 2')).toBeInTheDocument();
+  expect(await screen.findByText('Verse 13')).toBeInTheDocument();
+  expect(screen.getByText('Lines 13–24 of 24 · Page 2')).toBeInTheDocument();
   expect(screen.getByLabelText('Gurbani page 2')).toHaveAttribute('data-direction', 'next');
-  expect(JSON.parse(window.localStorage.getItem('ssm-gutka-reading-v1:member-7')).lines).toBe(8);
+  expect(JSON.parse(window.localStorage.getItem('ssm-gutka-reading-v1:member-7')).lines).toBe(12);
 });
 
 test('keeps controls anchored and prevents outside dismissal while reciting', async () => {

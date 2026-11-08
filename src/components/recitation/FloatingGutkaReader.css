@@ -67,6 +67,18 @@
   box-shadow: inset 6px 0 12px -10px #87653d, 3px 3px 0 #e9dfcf, 6px 6px 0 #f4ecdf;
 }
 
+.gutka-reader-viewport {
+  display: flex;
+  flex-direction: column;
+}
+
+.gutka-reader-viewport .gutka-reading-page {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
 .gutka-book-cover {
   position: relative;
   display: flex;
