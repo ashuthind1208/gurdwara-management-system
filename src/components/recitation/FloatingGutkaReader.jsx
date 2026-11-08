@@ -17,7 +17,7 @@ const NITNEM = [
   { id: 23, en: 'Kirtan Sohila', pa: 'ਕੀਰਤਨ ਸੋਹਿਲਾ', group: 'Evening Nitnem' }
 ];
 const FONT_SIZES = [18, 22, 26, 32, 40];
-const LINES_PER_PAGE = 8;
+const LINES_PER_PAGE = 12;
 const formatAngs = (line) => Number(line?.a) > 0 ? `Ang ${line.a}` : '';
 
 const FloatingGutkaReader = ({ placement = 'floating' }) => {
@@ -31,6 +31,7 @@ const FloatingGutkaReader = ({ placement = 'floating' }) => {
   const [baniSearch, setBaniSearch] = useState('');
   const [fontStep, setFontStep] = useState(0);
   const [readingScript, setReadingScript] = useState('gurmukhi');
+  const readerContentRef = useRef(null);
   const sourceStartedAt = useRef(0);
   const lastAdvanceAt = useRef(0);
   const swipeStartRef = useRef(null);
@@ -53,6 +54,28 @@ const FloatingGutkaReader = ({ placement = 'floating' }) => {
   const pageStart = currentPage * linesPerPage;
   const pageLines = useMemo(() => lines.slice(pageStart, pageStart + linesPerPage), [lines, pageStart, linesPerPage]);
   const currentLine = lines[pageStart] || null;
+  useEffect(() => {
+    const container = readerContentRef.current;
+    if (!container || view !== 'reader' || !pageLines.length) return undefined;
+    const fitText = () => {
+      const text = container.querySelector('.gutka-gurbani-flow');
+      const page = container.querySelector('.gutka-reading-page');
+      if (!text || !page || !container.clientHeight) return;
+      let size = FONT_SIZES[fontStep];
+      text.style.fontSize = `${size}px`;
+      while (size > 10 && page.scrollHeight > container.clientHeight + 1) {
+        size -= 0.5;
+        text.style.fontSize = `${size}px`;
+      }
+    };
+    fitText();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fitText);
+    observer?.observe(container);
+    let active = true;
+    document.fonts?.ready.then(() => { if (active) fitText(); });
+    window.addEventListener('resize', fitText);
+    return () => { active = false; observer?.disconnect(); window.removeEventListener('resize', fitText); };
+  }, [view, pageLines, readingScript, fontStep]);
   const filteredCatalog = useMemo(() => catalog.filter((bani) => !NITNEM.some((nitnem) => nitnem.id === bani.id)
     && `${bani.english} ${bani.gurmukhi}`.toLowerCase().includes(baniSearch.trim().toLowerCase())), [catalog, baniSearch]);
 
@@ -203,7 +226,7 @@ const FloatingGutkaReader = ({ placement = 'floating' }) => {
               <button type="button" onClick={() => setFontStep((value) => Math.min(FONT_SIZES.length - 1, value + 1))} aria-label="Larger text" className="rounded-lg border px-2 py-1 text-xs font-bold">A+</button>
             </div>
           </div>
-          <div data-testid="gutka-reader-content" tabIndex={0} aria-label="Gurbani reading text" onTouchStart={(event) => { const touch = event.changedTouches[0]; swipeStartRef.current = { x: touch.clientX, y: touch.clientY }; }} onTouchEnd={(event) => { const start = swipeStartRef.current; swipeStartRef.current = null; if (!start) return; const touch = event.changedTouches[0]; const dx = touch.clientX - start.x; const dy = touch.clientY - start.y; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigatePage(currentPage + (dx < 0 ? 1 : -1)); }} onPointerDown={(event) => { if (event.pointerType === 'mouse') swipeStartRef.current = { x: event.clientX, y: event.clientY }; }} onPointerUp={(event) => { if (event.pointerType !== 'mouse') return; const start = swipeStartRef.current; swipeStartRef.current = null; if (!start) return; const dx = event.clientX - start.x; const dy = event.clientY - start.y; if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.4) navigatePage(currentPage + (dx < 0 ? 1 : -1)); }} className="gutka-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 sm:py-4">
+          <div ref={readerContentRef} data-testid="gutka-reader-content" tabIndex={0} aria-label="Gurbani reading text" onTouchStart={(event) => { const touch = event.changedTouches[0]; swipeStartRef.current = { x: touch.clientX, y: touch.clientY }; }} onTouchEnd={(event) => { const start = swipeStartRef.current; swipeStartRef.current = null; if (!start) return; const touch = event.changedTouches[0]; const dx = touch.clientX - start.x; const dy = touch.clientY - start.y; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.3) navigatePage(currentPage + (dx < 0 ? 1 : -1)); }} onPointerDown={(event) => { if (event.pointerType === 'mouse') swipeStartRef.current = { x: event.clientX, y: event.clientY }; }} onPointerUp={(event) => { if (event.pointerType !== 'mouse') return; const start = swipeStartRef.current; swipeStartRef.current = null; if (!start) return; const dx = event.clientX - start.x; const dy = event.clientY - start.y; if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.4) navigatePage(currentPage + (dx < 0 ? 1 : -1)); }} className="gutka-reader-viewport min-h-0 flex-1 overflow-hidden px-3 py-3 sm:px-6 sm:py-4">
             {textLoading ? <div role="status" className="py-8 text-center text-slate-500">Loading Gurbani…</div> : textError ? <div role="alert" className="py-8 text-center text-rose-700">Gurbani text could not be loaded. Return to selection and try again.</div> : pageLines.length ? <article key={`${source?.type}-${source?.id}-${pageStart}`} data-direction={turnDirection} aria-label={`Gurbani page ${currentPage + 1}`} className="gutka-reading-page mx-auto max-w-4xl rounded-xl border-[3px] border-double border-blue-200 bg-[#fffefa] px-3 py-3 text-center shadow-inner sm:px-6 sm:py-4">
               <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lines {pageStart + 1}–{Math.min(pageStart + pageLines.length, lines.length)} of {lines.length} · Page {currentPage + 1}</p>
               <p aria-label={readingScript === 'roman' ? 'Roman English Gurbani' : 'Gurmukhi Gurbani'} lang={readingScript === 'roman' ? 'pa-Latn' : 'pa'} className={`gutka-gurbani-flow font-bold text-slate-900 ${readingScript === 'gurmukhi' ? 'font-gurmukhi' : 'gutka-roman-flow'}`} style={{ fontSize: `${FONT_SIZES[fontStep]}px` }}>{pageLines.map((line, index) => {
