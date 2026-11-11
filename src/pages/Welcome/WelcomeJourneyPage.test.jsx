@@ -8,7 +8,8 @@ import cmsService, { resolveScheduleForDate } from '../../services/cmsService';
 
 jest.mock('../../services/welcomeJourneyService', () => ({ __esModule: true, default: { getSettings: jest.fn(), submitFollowUp: jest.fn() } }));
 jest.mock('../../services/cmsService', () => ({ __esModule: true, default: { getHomeContent: jest.fn() }, resolveScheduleForDate: jest.fn() }));
-jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Singh Sabha Milton', address: '7035 Sixth Line' }, logoSrc: '/logo.png' }) }));
+jest.mock('../../components/recitation/FloatingGutkaReader', () => ({ __esModule: true, default: () => <button type="button">Read Gutka Sahib</button> }));
+jest.mock('../../context/BrandingContext', () => ({ ...jest.requireActual('../../context/BrandingContext'), useBranding: () => ({ branding: { organizationName: 'Example Gurdwara', address: '123 Example Road' }, logoSrc: '/logo.png' }) }));
 jest.mock('../../components/common/Seo', () => () => null);
 
 const defaultSettings = { enabled: true, showProgram: true, showLangar: true, showFollowUp: true, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: 'ਦਾਲ' }, { id: 'rice', nameEnglish: 'Rice', namePunjabi: 'ਚੌਲ' }], selectedDishIds: ['dal'] };
@@ -29,14 +30,15 @@ beforeEach(() => {
   resolveScheduleForDate.mockReturnValue({ entries: [{ id: 'kirtan', timeEn: '10:00 AM', titleEn: 'Kirtan', isActive: true }] });
 });
 
-test('provides directions, current program and langar without requiring an account', async () => {
-  setup({ directionsUrl: 'https://maps.google.com/?q=test', address: '7035 Sixth Line', showFollowUp: false });
+test('provides the current program and langar without directions or an account requirement', async () => {
+  setup({ directionsUrl: 'https://maps.google.com/?q=test', address: '123 Example Road', showFollowUp: false });
   expect(await screen.findByText('Kirtan')).toBeInTheDocument();
   expect(screen.getByText('Dal')).toBeInTheDocument();
   expect(screen.getByText('ਦਾਲ')).toHaveAttribute('lang', 'pa');
   expect(screen.queryByText('Rice')).not.toBeInTheDocument();
   expect(screen.queryByText('Milk')).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Get directions' })).toHaveAttribute('href', 'https://maps.google.com/?q=test');
+  expect(screen.queryByRole('link', { name: 'Get directions' })).not.toBeInTheDocument();
+  expect(screen.queryByText('123 Example Road')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
   expect(screen.queryByText(/sign in|create an account/i)).not.toBeInTheDocument();
 });
@@ -59,7 +61,7 @@ test('hides the visitor form when disabled in admin settings', async () => {
   queryClient.setQueryData(['welcome-journey-settings'], { enabled: true, showFollowUp: false });
   queryClient.setQueryData(['welcome-journey-home-content'], { scheduleDays: [], langarItems: [] });
   render(<MemoryRouter initialEntries={['/welcome']}><QueryClientProvider client={queryClient}><WelcomeJourneyPage /></QueryClientProvider></MemoryRouter>);
-  expect(await screen.findByRole('heading', { name: 'Welcome to Singh Sabha Milton' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Welcome to Example Gurdwara' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Would you like us to follow up?' })).not.toBeInTheDocument();
 });
 
@@ -70,8 +72,8 @@ test('honors directions and menu switches while retaining bilingual service time
   expect(screen.getByText('Langar is served to everyone. Please join us.')).toBeInTheDocument();
   expect(screen.queryByText('Dal')).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Get directions' })).not.toBeInTheDocument();
-  expect(screen.queryByText('7035 Sixth Line')).not.toBeInTheDocument();
-  expect(screen.getByRole('banner')).toHaveClass('from-[#7c2d12]');
+  expect(screen.queryByText('123 Example Road')).not.toBeInTheDocument();
+  expect(screen.getByRole('banner')).toHaveAttribute('data-theme', 'saffron');
 });
 
 test.each([{}, { dishes: [], selectedDishIds: [] }, { selectedDishIds: [] }])('empty or legacy menus show only a welcoming note, never grocery inventory (%j)', async (menu) => {

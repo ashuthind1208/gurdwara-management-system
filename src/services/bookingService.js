@@ -52,7 +52,7 @@ const normalizeBooking = (record = {}, index = 0) => {
     toDate: String(record.toDate || record.date || '').trim(),
     startTime: String(record.startTime || '').trim(),
     endTime: String(record.endTime || '').trim(),
-    bookingLocation: String(record.bookingLocation || record.location || 'Gurdwara Singh Sabha Milton, 7035 Sixth Line, Milton, ON').trim(),
+    bookingLocation: String(record.bookingLocation || record.location || '').trim(),
     bookingVenueType: ['gurdwara', 'residence'].includes(String(record.bookingVenueType || '').trim().toLowerCase())
       ? String(record.bookingVenueType).trim().toLowerCase()
       : (/gurdwara|7035\s+sixth\s+line/i.test(String(record.bookingLocation || record.location || '')) ? 'gurdwara' : 'residence'),

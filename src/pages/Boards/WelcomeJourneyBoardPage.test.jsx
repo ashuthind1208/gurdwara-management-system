@@ -7,17 +7,17 @@ import cmsService, { resolveScheduleForDate } from '../../services/cmsService';
 
 jest.mock('../../services/welcomeJourneyService', () => ({ __esModule: true, default: { getSettings: jest.fn() } }));
 jest.mock('../../services/cmsService', () => ({ __esModule: true, default: { getHomeContent: jest.fn() }, resolveScheduleForDate: jest.fn() }));
-jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Singh Sabha Milton', address: '7035 Sixth Line' }, logoSrc: '/logo.png' }) }));
+jest.mock('../../context/BrandingContext', () => ({ ...jest.requireActual('../../context/BrandingContext'), useBranding: () => ({ branding: { organizationName: 'Example Gurdwara', address: '123 Example Road' }, logoSrc: '/logo.png' }) }));
 jest.mock('../../components/common/Seo', () => () => null);
 jest.mock('qrcode.react', () => ({ QRCodeSVG: ({ value }) => <svg data-testid="welcome-qr" data-value={value} /> }));
 
 beforeEach(() => {
-  welcomeJourneyService.getSettings.mockResolvedValue({ enabled: true, titleEnglish: 'Welcome home', address: '7035 Sixth Line', directionsUrl: 'https://maps.google.com/?q=test', showProgram: true, showLangar: true, showFollowUp: true, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: 'ਦਾਲ' }, { id: 'rice', nameEnglish: 'Rice', namePunjabi: 'ਚੌਲ' }], selectedDishIds: ['dal'] });
+  welcomeJourneyService.getSettings.mockResolvedValue({ enabled: true, titleEnglish: 'Welcome home', address: '123 Example Road', directionsUrl: 'https://maps.google.com/?q=test', showProgram: true, showLangar: true, showFollowUp: true, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: 'ਦਾਲ' }, { id: 'rice', nameEnglish: 'Rice', namePunjabi: 'ਚੌਲ' }], selectedDishIds: ['dal'] });
   resolveScheduleForDate.mockReturnValue({ entries: [{ id: 'morning', timeEn: '10 AM', titleEn: 'Kirtan', isActive: true }] });
   cmsService.getHomeContent.mockResolvedValue({ data: { scheduleDays: [], langarItems: [{ id: 'langar-1', name: 'Milk', needed: true }] } });
 });
 
-test('shows the configured welcome, current program, langar, directions and scan QR', async () => {
+test('shows the configured welcome, current program, langar and scan QR without a visitor address card', async () => {
   render(<QueryClientProvider client={new QueryClient()}><WelcomeJourneyBoardPage /></QueryClientProvider>);
   expect(await screen.findByRole('heading', { name: 'Welcome home' })).toBeInTheDocument();
   expect(screen.getByText('Kirtan')).toBeInTheDocument();
@@ -25,7 +25,7 @@ test('shows the configured welcome, current program, langar, directions and scan
   expect(screen.getByText('ਦਾਲ')).toHaveAttribute('lang', 'pa');
   expect(screen.queryByText('Rice')).not.toBeInTheDocument();
   expect(screen.queryByText('Milk')).not.toBeInTheDocument();
-  expect(screen.getByText('7035 Sixth Line')).toBeInTheDocument();
+  expect(screen.queryByText('123 Example Road')).not.toBeInTheDocument();
   expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-value', `${window.location.origin}/welcome`);
 });
 
@@ -36,12 +36,12 @@ test('hides directions and dish names but keeps service time, langar note and QR
   expect(screen.getByText('ਦੁਪਹਿਰ ਤੋਂ')).toHaveAttribute('lang', 'pa');
   expect(screen.getByText('Langar is served to everyone. Please join us.')).toBeInTheDocument();
   expect(screen.queryByText('Dal')).not.toBeInTheDocument();
-  expect(screen.queryByText('7035 Sixth Line')).not.toBeInTheDocument();
+  expect(screen.queryByText('123 Example Road')).not.toBeInTheDocument();
   expect(screen.queryByText('Directions · Program · Langar')).not.toBeInTheDocument();
   expect(screen.getByText('Program · Langar')).toBeInTheDocument();
-  expect(screen.getByText('Scan for visitor information')).toBeInTheDocument();
+  expect(screen.getByText('Scan for today’s guide and community information')).toBeInTheDocument();
   expect(screen.getByTestId('welcome-qr')).toBeInTheDocument();
-  expect(screen.getByRole('main')).toHaveClass('from-[#7c2d12]');
+  expect(screen.getByRole('main')).toHaveAttribute('data-theme', 'saffron');
 });
 
 test('no selected dishes shows only a langar note and never CMS groceries', async () => {
@@ -73,7 +73,7 @@ test('shows configured Punjabi intro and program/langar headings on the lobby sc
 test('respects disabled program and langar sections', async () => {
   welcomeJourneyService.getSettings.mockResolvedValue({ enabled: true, showProgram: false, showLangar: false, showFollowUp: false });
   render(<QueryClientProvider client={new QueryClient()}><WelcomeJourneyBoardPage /></QueryClientProvider>);
-  expect(await screen.findByRole('heading', { name: 'Welcome to Singh Sabha Milton' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Welcome to Example Gurdwara' })).toBeInTheDocument();
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'Today’s program' })).not.toBeInTheDocument());
   expect(screen.queryByRole('heading', { name: 'Langar today' })).not.toBeInTheDocument();
   expect(screen.queryByText(/Optional follow-up/)).not.toBeInTheDocument();

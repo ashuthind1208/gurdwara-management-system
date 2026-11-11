@@ -31,7 +31,7 @@ test('confirms guest wallet payment on a standalone route without authentication
   expect(await screen.findByRole('heading', { name: 'Thank you for your donation' })).toBeInTheDocument();
   expect(screen.getByText('Your CAD $10.00 payment is confirmed.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Close this tab' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Visit Gurdwara website' })).toHaveAttribute('href', 'https://singhsabhamilton.com/');
+  expect(screen.getByRole('link', { name: 'Visit Gurdwara website' })).toHaveAttribute('href', window.location.origin);
   expect(donationService.verifyQuickDonation).toHaveBeenCalledWith({ paymentIntentId: 'pi_guest', clientSecret: 'pi_guest_secret_test' });
 });
 

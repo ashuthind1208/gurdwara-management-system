@@ -4,8 +4,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBranding } from '../../context/BrandingContext';
 import donationService from '../../services/donationService';
 import { clearActiveQuickDonation, readQuickDonateConfirmation, saveQuickDonateConfirmation } from '../../utils/quickDonateConfirmation';
+import { siteConfig } from '../../constants/siteConfig';
 
-const GURDWARA_WEBSITE_URL = 'https://singhsabhamilton.com/';
+const GURDWARA_WEBSITE_URL = siteConfig.baseUrl || '/';
 
 const QuickDonateSuccessPage = () => {
   const { branding } = useBranding();
@@ -46,7 +47,7 @@ const QuickDonateSuccessPage = () => {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-5 py-10 text-[#102a43]">
       <section className="w-full max-w-sm text-center" aria-live="polite">
-        <p className="mb-4 font-semibold">{branding?.organizationName || 'Singh Sabha Milton'}</p>
+        <p className="mb-4 font-semibold">{branding?.organizationName || siteConfig.name}</p>
         {!valid || isError ? (
           <><h1 className="text-2xl font-bold">Payment could not be verified</h1><p className="mt-4" role="alert">Please contact the Gurdwara before paying again.</p></>
         ) : isPending ? <p role="status">Confirming your donation…</p> : succeeded ? (

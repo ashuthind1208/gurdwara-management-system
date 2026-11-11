@@ -7,7 +7,7 @@ const month = { key: 'month', label: 'Month YYYY-MM (blank means current month)'
 const displayMode = { key: 'displayMode', label: 'Display style', type: 'select', defaultValue: 'list', options: ['list', 'cards'] };
 const newsDisplayMode = { key: 'displayMode', label: 'Display style', type: 'select', defaultValue: 'list', options: ['list', 'featured'] };
 const langarView = { key: 'view', label: 'Langar information to show', type: 'select', defaultValue: 'needs', options: ['needs', 'required soon', 'collection progress'] };
-const gurdwara = { key: 'gurdwara', label: 'Gurdwara Hukamnama source', type: 'select', defaultValue: 'Sri Harmandir Sahib (BaniDB)', options: ['Sri Harmandir Sahib (BaniDB)', 'Singh Sabha Milton'] };
+const gurdwara = { key: 'gurdwara', label: 'Gurdwara Hukamnama source', type: 'select', defaultValue: 'Sri Harmandir Sahib (BaniDB)', options: ['Sri Harmandir Sahib (BaniDB)', 'This Gurdwara'] };
 const ang = { key: 'ang', label: 'Sri Guru Granth Sahib Ji Ang (1–1430)', type: 'number', defaultValue: 1 };
 const bani = { key: 'bani', label: 'Nitnem bani', type: 'select', defaultValue: 'Japji Sahib', options: ['Japji Sahib', 'Rehras Sahib', 'Kirtan Sohila'] };
 const searchQuery = { key: 'query', label: 'Gurbani phrase to search', type: 'text', defaultValue: 'ਸਤਿ' };
@@ -43,7 +43,7 @@ const sources = {
   campaigns: ['Donation campaigns · public campaign totals only, no donor records', '/admin/donations', '/donation', 'View donation campaigns'],
   notices: ['Community announcements · approved notices in their publication window', '/admin/community-announcements', '/community-announcements-board', 'Browse public notices'],
   branding: ['Gurdwara branding · organization contact and social settings', '/admin/gurdwara-branding', '/contact', 'Contact the Gurdwara'],
-  hukamnama: ['BaniDB Darbar Sahib feed or the locally scheduled Milton Hukamnama; source date is shown', 'https://api.banidb.com/v2/hukamnamas', '', ''],
+  hukamnama: ['BaniDB Darbar Sahib feed or this Gurdwara’s locally scheduled Hukamnama; source date is shown', 'https://api.banidb.com/v2/hukamnamas', '', ''],
   scripture: ['BaniDB · Sri Guru Granth Sahib Ji with English translations', 'https://www.banidb.com', '', ''],
   nitnem: ['BaniDB · selected Nitnem composition with English translations', 'https://www.banidb.com', '', ''],
   'sikh-resources': ['Curated Sikh learning websites · direct source links, not a live feed', 'https://sikhri.org', '', ''],

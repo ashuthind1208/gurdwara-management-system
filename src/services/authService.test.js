@@ -48,4 +48,16 @@ describe('inactive Member authentication', () => {
       intent: 'signin'
     })).rejects.toThrow('Admin has marked your account inactive. Please contact admin for access.');
   });
+
+  test('keeps the Google OAuth access token for endpoints that verify it server-side', async () => {
+    const user = { id: 'verified-user', email: 'admin@example.test', name: 'Admin', role: 'Super Admin', approvalStatus: 'approved', isActive: true };
+    userService.getUserByEmail.mockResolvedValue({ data: user });
+    userService.upsertUserByEmail.mockResolvedValue({ data: user });
+    const response = await authService.loginWithGoogle({
+      email: user.email,
+      name: user.name,
+      googleAccessToken: 'real-google-access-token'
+    });
+    expect(response.data.token).toBe('real-google-access-token');
+  });
 });

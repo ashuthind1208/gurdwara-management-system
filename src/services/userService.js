@@ -79,64 +79,7 @@ const resolveRoleAdminPageAccess = (role, storedAccess, roleDefinitions = []) =>
   return getDefaultAdminPageAccessForRole(normalizedRole);
 };
 
-const seedUsers = [
-  {
-    id: 'user-1',
-    name: 'Admin Singh',
-    role: 'Super Admin',
-    email: 'admin@singhsabhamilton.org',
-    phone: '',
-    address: '',
-    memberType: 'Admin',
-    authProvider: 'LOCAL',
-    avatarUrl: '',
-    registrationComplete: true,
-    approvalStatus: 'approved',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'user-2',
-    name: 'Kirandeep Kaur',
-    role: 'Admin',
-    email: 'editor@singhsabhamilton.org',
-    phone: '',
-    address: '',
-    memberType: 'Admin',
-    authProvider: 'LOCAL',
-    avatarUrl: '',
-    registrationComplete: true,
-    approvalStatus: 'approved',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'user-3',
-    name: 'Manveer Singh',
-    role: 'Member',
-    email: 'finance@singhsabhamilton.org',
-    phone: '',
-    address: '',
-    memberType: 'Member',
-    authProvider: 'LOCAL',
-    avatarUrl: '',
-    registrationComplete: true,
-    approvalStatus: 'approved',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'user-4',
-    name: 'Gurleen Kaur',
-    role: 'Volunteer Coordinator',
-    email: 'volunteers@singhsabhamilton.org',
-    phone: '',
-    address: '',
-    memberType: 'Volunteer',
-    authProvider: 'LOCAL',
-    avatarUrl: '',
-    registrationComplete: true,
-    approvalStatus: 'approved',
-    createdAt: new Date().toISOString()
-  }
-];
+const seedUsers = [];
 
 const normalizeRole = (value) => {
   const raw = String(value || '').trim().toLowerCase();

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCircleIcon, SpeakerWaveIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getStreamingEmbedUrl, resolveStreamingLive, isYouTubeSource } from '../../services/streamingService';
 import { getYouTubeEmbedUrl } from '../../services/videoService';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 
 const sendYouTubeCommand = (iframe, func, args = []) => {
   if (!iframe?.contentWindow) {
@@ -286,7 +286,7 @@ const StreamingModal = ({ open, streams = [], initialStreamId = '', onClose }) =
                           <div className="flex min-h-[320px] w-full flex-col items-center justify-center bg-brand-blue px-6 py-8 text-center">
                             <img
                               src={gurdwaraLogo}
-                              alt="Gurdwara Singh Sabha Milton logo"
+                              alt="Gurdwara logo"
                               className="h-24 w-24 rounded-full border-2 border-white/75 object-cover shadow-lg"
                             />
                             <p className="mt-5 max-w-lg text-base font-semibold leading-relaxed text-white">

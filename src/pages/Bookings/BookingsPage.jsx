@@ -85,7 +85,7 @@ const initialForm = {
   toDate: '',
   startTime: '',
   endTime: '',
-  bookingLocation: 'Gurdwara Singh Sabha Milton, 7035 Sixth Line, Milton, ON',
+  bookingLocation: '',
   bookingVenueType: 'gurdwara',
   hidePublicLocation: true,
   bookingForDifferentPerson: false,

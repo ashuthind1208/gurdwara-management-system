@@ -18,7 +18,7 @@ const readConfig = (env = process.env) => {
     enabled: String(env.WA_NOTIFICATIONS_ENABLED || 'false').trim().toLowerCase() === 'true',
     dryRun: String(env.WA_DRY_RUN || 'false').trim().toLowerCase() === 'true',
     burstWindowMs: Number.isFinite(burstWindow) ? Math.max(1000, burstWindow) : DEFAULT_BURST_WINDOW_MS,
-    siteBaseUrl: String(env.SITE_BASE_URL || 'https://singhsabhamilton.com').trim().replace(/\/+$/, '')
+    siteBaseUrl: String(env.SITE_BASE_URL || env.PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '')
   };
 };
 

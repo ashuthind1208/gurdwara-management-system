@@ -46,7 +46,7 @@ test('send only paid opted-in donations, and claim each transaction once', async
   assert.deepEqual(await sender.send(donation, true), { duplicate: true });
   assert.equal(sent, 1);
   assert.equal(updates[0].status, 'accepted');
-  assert.equal(message, 'Singh Sabha Milton: Thank you Test Donor ji for your donation of CAD 50.00 for Gurdwara Fund. Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh.');
+  assert.equal(message, 'Your Gurdwara: Thank you Test Donor ji for your donation of CAD 50.00 for Gurdwara Fund. Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh.');
 });
 
 test('disabled configuration never sends or claims a donation', async () => {

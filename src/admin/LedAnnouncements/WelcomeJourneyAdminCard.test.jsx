@@ -48,14 +48,22 @@ test('removing a saved dish also removes it from today’s menu', async () => {
   expect(welcomeJourneyService.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ dishes: [], selectedDishIds: [] }));
 });
 
-test('shows saved settings read-only without verified Super Admin Google access', async () => {
-  welcomeJourneyService.getSettings.mockResolvedValue({ canSave: false, followUpAvailable: false, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: '' }], selectedDishIds: ['dal'] });
+test('shows saved settings read-only without an authorized Super Admin account', async () => {
+  welcomeJourneyService.getSettings.mockResolvedValue({ canSave: false, canSaveReason: 'super_admin_required', followUpAvailable: false, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: '' }], selectedDishIds: ['dal'] });
   welcomeJourneyService.listFollowUps.mockRejectedValue(new Error('Unavailable'));
   setup();
-  expect(await screen.findByText(/could not be verified as an active, approved Super Admin Google account/)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Sign out and sign in with Google' })).toBeInTheDocument();
+  expect(await screen.findByText('Only an active, approved Super Admin can edit Welcome Journey settings.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Sign in to the admin portal' })).not.toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: 'Serve Dal today' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Save Welcome Journey' })).toBeDisabled();
   expect(await screen.findByText('Visitor follow-up requests are unavailable.')).toBeInTheDocument();
   expect(screen.queryByText('No visitor requests yet.')).not.toBeInTheDocument();
+});
+
+test('offers admin portal sign-in when the current actor is unavailable', async () => {
+  welcomeJourneyService.getSettings.mockResolvedValue({ canSave: false, canSaveReason: 'google_sign_in_required', dishes: [], selectedDishIds: [] });
+  welcomeJourneyService.listFollowUps.mockRejectedValue(new Error('Unauthorized'));
+  setup();
+  expect(await screen.findByText('Sign in to the admin portal with an active, approved account to edit Welcome Journey settings.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign in to the admin portal' })).toBeInTheDocument();
 });

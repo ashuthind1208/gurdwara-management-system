@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Card from '../ui/Card';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 
 const GalleryCard = ({ album }) => {
   const [imageSrc, setImageSrc] = useState(album.frontImage || album.cover || gurdwaraLogo);

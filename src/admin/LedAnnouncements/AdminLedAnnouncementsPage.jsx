@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EyeIcon, PencilSquareIcon, PhotoIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import AdminHeaderActionButton from '../../components/ui/AdminHeaderActionButton';
 import StatusAlert from '../../components/common/StatusAlert';
 import LedAnnouncementSlide from '../../components/boards/LedAnnouncementSlide';
 import LedBoardControlCard from './LedBoardControlCard';
@@ -43,7 +41,6 @@ const formatDateKey = (value) => (value ? formatDate(`${value}T12:00:00`) : '-')
 const inputClass = 'mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm disabled:bg-slate-50';
 
 const AdminLedAnnouncementsPage = () => {
-  const { setHeaderAction } = useOutletContext();
   const queryClient = useQueryClient();
   const [modalState, setModalState] = useState({ open: false, mode: 'create', announcementId: null });
   const [uploadProgress, setUploadProgress] = useState(null);
@@ -169,13 +166,6 @@ const AdminLedAnnouncementsPage = () => {
 
   useEffect(() => { setPage(1); }, [searchTerm, statusFilter]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
-  useEffect(() => {
-    setHeaderAction(<AdminHeaderActionButton label="Add Announcement" onClick={() => openModal('create')} />);
-    return () => setHeaderAction(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setHeaderAction]);
-
-
   return (
     <div className="admin-led-announcements w-full min-w-0 max-w-full space-y-6 overflow-x-clip">
       <h1 className="sr-only">LED Announcements</h1>
@@ -184,9 +174,12 @@ const AdminLedAnnouncementsPage = () => {
       <LedScreenOperationsCard />
 
       <Card className="w-full min-w-0 max-w-full">
-        <div>
-          <h2 className="font-heading text-xl font-semibold">LED Announcements</h2>
-          <p className="mt-1 text-sm text-slate-600">Special event photos and formatted notices for the Special Events LED board. Only Active announcements appear on screen.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-xl font-semibold">LED Announcements</h2>
+            <p className="mt-1 text-sm text-slate-600">Special event photos and formatted notices for the Special Events LED board. Only Active announcements appear on screen.</p>
+          </div>
+          <Button type="button" onClick={() => openModal('create')}>Add Announcement</Button>
         </div>
 
         <div className="mt-4 grid min-w-0 gap-2 md:grid-cols-3">

@@ -6,7 +6,7 @@ import StatusAlert from '../../components/common/StatusAlert';
 import useDailyHukamnama from '../../hooks/useDailyHukamnama';
 import ledAnnouncementService, { isAnnouncementForScreen, isAnnouncementLive } from '../../services/ledAnnouncementService';
 import ledBoardSettingsService, { clampHukamnamaSeconds, clampInterval, clampWelcomeSeconds } from '../../services/ledBoardSettingsService';
-import { DEFAULT_WELCOME_SECONDS, HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, HUKAMNAMA_PRESETS, INTERVAL_PRESETS, LED_BOARDS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, WELCOME_MAX_SECONDS, WELCOME_MIN_SECONDS, WELCOME_PRESETS, buildLedSlides, getLedScreens, slugifyScreenId } from '../../constants/ledBoards';
+import { DEFAULT_HUKAMNAMA_SECONDS, DEFAULT_INTERVAL_SECONDS, DEFAULT_WELCOME_SECONDS, HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, HUKAMNAMA_PRESETS, INTERVAL_PRESETS, LED_BOARDS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, WELCOME_MAX_SECONDS, WELCOME_MIN_SECONDS, WELCOME_PRESETS, buildLedSlides, getLedScreens, slugifyScreenId } from '../../constants/ledBoards';
 
 const SETTINGS_QUERY_KEY = ['led-board-settings'];
 
@@ -80,17 +80,18 @@ const LedBoardControlCard = () => {
     const current = queryClient.getQueryData(SETTINGS_QUERY_KEY) || settings;
     save({ enabled: { ...current.enabled, [key]: !current.enabled[key] } });
   };
-  const commitInterval = (value) => {
-    const next = clampInterval(value);
-    if (next !== settings.intervalSeconds) save({ intervalSeconds: next });
-  };
-  const commitHukamnamaSeconds = (value) => {
-    const next = clampHukamnamaSeconds(value);
-    if (next !== settings.hukamnamaSeconds) save({ hukamnamaSeconds: next });
-  };
-  const commitWelcomeSeconds = (value) => {
-    const next = clampWelcomeSeconds(value);
-    if (next !== settings.welcomeSeconds) save({ welcomeSeconds: next });
+  const durationFor = (key) => settings.slideDurations?.[key]
+    || (key === 'hukamnama' ? settings.hukamnamaSeconds || DEFAULT_HUKAMNAMA_SECONDS
+      : key === 'welcome' ? settings.welcomeSeconds || settings.intervalSeconds || DEFAULT_WELCOME_SECONDS
+        : settings.intervalSeconds || DEFAULT_INTERVAL_SECONDS);
+  const presetsFor = (key) => key === 'hukamnama' ? HUKAMNAMA_PRESETS : key === 'welcome' ? WELCOME_PRESETS : INTERVAL_PRESETS;
+  const commitSlideDuration = (key, value) => {
+    const next = key === 'hukamnama' ? clampHukamnamaSeconds(value)
+      : key === 'welcome' ? clampWelcomeSeconds(value) : clampInterval(value);
+    const current = queryClient.getQueryData(SETTINGS_QUERY_KEY) || settings;
+    if (next === current.slideDurations?.[key]) return;
+    const slideDurations = { ...current.slideDurations, [key]: next };
+    save({ slideDurations, ...(key === 'hukamnama' ? { hukamnamaSeconds: next } : {}), ...(key === 'welcome' ? { welcomeSeconds: next } : {}) });
   };
 
   const setScreenPlaylist = (screenId, keys) => {
@@ -146,14 +147,12 @@ const LedBoardControlCard = () => {
       <div className="mt-3"><StatusAlert type={status.type} message={status.message} /></div>
 
       <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-slate-100 pb-4">
-        <SecondsControl id="led-interval" label="Seconds per slide" value={settings.intervalSeconds} min={MIN_INTERVAL_SECONDS} max={MAX_INTERVAL_SECONDS} presets={INTERVAL_PRESETS} onCommit={commitInterval} />
-        {settings.enabled.welcome ? <SecondsControl id="led-welcome-seconds" label="Welcome QR slide duration" value={settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS} min={WELCOME_MIN_SECONDS} max={WELCOME_MAX_SECONDS} presets={WELCOME_PRESETS} onCommit={commitWelcomeSeconds} /> : null}
         <p className="pb-2 text-sm font-semibold text-slate-700" aria-live="polite">
           {slides.length ? `${slides.length} slide${slides.length === 1 ? '' : 's'} · full cycle ${formatDuration(cycleSeconds)}` : 'No slides active. The LED screen shows the Gurdwara logo.'}
         </p>
       </div>
 
-      <ul className="mt-3 grid w-full min-w-0 gap-2 md:grid-cols-2">
+      <ul className="mt-3 grid w-full min-w-0 grid-cols-1 gap-2">
         {LED_BOARDS.map((board) => {
           const Icon = board.icon;
           const enabled = settings.enabled[board.key];
@@ -161,19 +160,18 @@ const LedBoardControlCard = () => {
             ? (liveAnnouncements.length === 0 ? 'No active announcements; skipped until one is added' : `${liveAnnouncements.length} active announcement${liveAnnouncements.length === 1 ? '' : 's'}, one slide each`)
             : board.key === 'hukamnama' && !hasHukamnama
               ? 'Not posted for today yet; skipped until it is'
-              : board.key === 'hukamnama' ? `${board.description} Shown for ${formatDuration(settings.hukamnamaSeconds)}.`
-                : board.key === 'welcome' ? `${board.description} Shown for ${formatDuration(settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS)}.` : board.description;
+              : board.description;
           return (
-            <li key={board.key} className={`min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${board.key === 'hukamnama' ? 'md:col-span-2' : ''}`}>
-              <div className={board.key === 'hukamnama' ? 'grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2.5 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]' : 'flex min-w-0 flex-wrap items-center gap-2.5'}>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${board.key === 'hukamnama' ? 'col-start-1 row-start-1' : ''} ${board.accent}`}><Icon className="h-5 w-5" /></span>
-                <div className={`min-w-0 ${board.key === 'hukamnama' ? 'col-start-2 row-start-1' : 'flex-1 basis-40'}`}>
+            <li key={board.key} className="min-w-0 rounded-lg border border-slate-200 px-3 py-2.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${board.accent}`}><Icon className="h-5 w-5" /></span>
+                <div className="min-w-40 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-800">{board.title}</p>
                   <p className="truncate text-xs text-slate-500" title={note}>{note}</p>
                 </div>
-                {board.key === 'hukamnama' ? <div className="col-span-4 col-start-1 row-start-2 min-w-0 lg:col-span-1 lg:col-start-3 lg:row-start-1"><SecondsControl id="led-hukamnama-seconds" label="Hukamnama slide duration in seconds" value={settings.hukamnamaSeconds} min={HUKAMNAMA_MIN_SECONDS} max={HUKAMNAMA_MAX_SECONDS} presets={HUKAMNAMA_PRESETS} onCommit={commitHukamnamaSeconds} compact /></div> : null}
-                <a href={board.path} target="_blank" rel="noreferrer" className={`shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:bg-slate-50 ${board.key === 'hukamnama' ? 'col-start-3 row-start-1 lg:col-start-4' : ''}`} title={`Open ${board.title}`} aria-label={`Open ${board.title}`}><ArrowTopRightOnSquareIcon className="h-4 w-4" /></a>
-                <button type="button" role="switch" aria-checked={enabled} aria-label={`${board.title} ${enabled ? 'active' : 'inactive'}`} onClick={() => toggleBoard(board.key)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${enabled ? 'bg-emerald-500' : 'bg-slate-300'} ${board.key === 'hukamnama' ? 'col-start-4 row-start-1 lg:col-start-5' : ''}`}>
+                <SecondsControl id={`led-${board.key}-seconds`} label={`${board.title} slide duration in seconds`} value={durationFor(board.key)} min={board.key === 'hukamnama' ? HUKAMNAMA_MIN_SECONDS : board.key === 'welcome' ? WELCOME_MIN_SECONDS : MIN_INTERVAL_SECONDS} max={board.key === 'hukamnama' ? HUKAMNAMA_MAX_SECONDS : board.key === 'welcome' ? WELCOME_MAX_SECONDS : MAX_INTERVAL_SECONDS} presets={presetsFor(board.key)} onCommit={(value) => commitSlideDuration(board.key, value)} compact />
+                <a href={board.path} target="_blank" rel="noreferrer" className="shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:bg-slate-50" title={`Open ${board.title}`} aria-label={`Open ${board.title}`}><ArrowTopRightOnSquareIcon className="h-4 w-4" /></a>
+                <button type="button" role="switch" aria-checked={enabled} aria-label={`${board.title} ${enabled ? 'active' : 'inactive'}`} onClick={() => toggleBoard(board.key)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>

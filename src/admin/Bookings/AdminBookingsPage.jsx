@@ -25,6 +25,7 @@ import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tool
 import RichTextEditor from '../../components/forms/RichTextEditor';
 import AdminHeaderActionButton from '../../components/ui/AdminHeaderActionButton';
 import bookingService from '../../services/bookingService';
+import { siteConfig } from '../../constants/siteConfig';
 import donationService from '../../services/donationService';
 import eventService from '../../services/eventService';
 import contentApiService from '../../services/contentApiService';
@@ -471,7 +472,7 @@ const AdminBookingsPage = () => {
     }
     const common = {
       fileName: `booking-revenue-${revenueReport.startDate}-to-${revenueReport.endDate}.${format}`,
-      organizationName: 'Singh Sabha Milton Gurdwara',
+      organizationName: siteConfig.name,
       bookings: revenueReport.rows,
       startDate: revenueReport.startDate,
       endDate: revenueReport.endDate,
@@ -695,7 +696,7 @@ const AdminBookingsPage = () => {
         ...current.booking,
         requesterAddress: address,
         bookingVenueType: hasAddress ? 'residence' : 'gurdwara',
-        bookingLocation: hasAddress ? address : 'Gurdwara Singh Sabha Milton, 7035 Sixth Line, Milton, ON'
+        bookingLocation: hasAddress ? address : ''
       }
     }));
   };
@@ -971,7 +972,7 @@ const AdminBookingsPage = () => {
         startTime: '10:00',
         endTime: '11:00',
         occasionType: '',
-        bookingLocation: 'Gurdwara Singh Sabha Milton, 7035 Sixth Line, Milton, ON',
+        bookingLocation: '',
         bookingVenueType: 'gurdwara',
         hidePublicLocation: true,
         requesterName: '',

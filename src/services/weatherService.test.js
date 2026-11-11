@@ -1,6 +1,6 @@
 import weatherService, { buildGeocodingQueries } from './weatherService';
 
-const geocodeResult = { results: [{ name: 'Milton', admin1: 'Ontario', latitude: 43.51681, longitude: -79.88294 }] };
+const geocodeResult = { results: [{ name: 'Toronto', admin1: 'Ontario', latitude: 43.6532, longitude: -79.3832 }] };
 const forecastResult = {
   current: { temperature_2m: 18.4, weather_code: 2 },
   daily: {
@@ -16,12 +16,12 @@ const forecastResult = {
 beforeEach(() => jest.restoreAllMocks());
 
 test('derives a geocoder-friendly Canadian locality from a street address', () => {
-  expect(buildGeocodingQueries('7035 Sixth Line, Milton ON')).toEqual([
-    '7035 Sixth Line, Milton ON',
-    'Milton, ON, Canada',
-    '7035 Sixth Line, Milton ON, Canada'
+  expect(buildGeocodingQueries('123 Example Road, Toronto ON')).toEqual([
+    '123 Example Road, Toronto ON',
+    'Toronto, ON, Canada',
+    '123 Example Road, Toronto ON, Canada'
   ]);
-  expect(buildGeocodingQueries('Milton, Ontario')).toContain('Milton, Ontario, Canada');
+  expect(buildGeocodingQueries('Toronto, Ontario')).toContain('Toronto, Ontario, Canada');
 });
 
 test('falls back from an unrecognized street address and returns local forecast and sun times', async () => {
@@ -30,12 +30,12 @@ test('falls back from an unrecognized street address and returns local forecast 
     .mockResolvedValueOnce({ ok: true, json: async () => geocodeResult })
     .mockResolvedValueOnce({ ok: true, json: async () => forecastResult });
 
-  const result = await weatherService.getForAddress('7035 Sixth Line, Milton ON');
+  const result = await weatherService.getForAddress('123 Example Road, Toronto ON');
 
-  expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('name')).toBe('7035 Sixth Line, Milton ON');
-  expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('name')).toBe('Milton, ON, Canada');
-  expect(new URL(fetchMock.mock.calls[2][0]).searchParams.get('latitude')).toBe('43.51681');
-  expect(result).toMatchObject({ location: 'Milton, Ontario', temperature: 18, description: 'Partly cloudy', days: expect.arrayContaining([expect.objectContaining({ sunrise: '2026-11-06T07:45', sunset: '2026-11-06T17:02' })]) });
+  expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('name')).toBe('123 Example Road, Toronto ON');
+  expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('name')).toBe('Toronto, ON, Canada');
+  expect(new URL(fetchMock.mock.calls[2][0]).searchParams.get('latitude')).toBe('43.6532');
+  expect(result).toMatchObject({ location: 'Toronto, Ontario', temperature: 18, description: 'Partly cloudy', days: expect.arrayContaining([expect.objectContaining({ sunrise: '2026-11-06T07:45', sunset: '2026-11-06T17:02' })]) });
 });
 
 test('uses a newly saved Gurdwara address to geocode the updated location', async () => {

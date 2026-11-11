@@ -10,20 +10,29 @@ const createWelcomeJourneyHandler = ({ eventsDb, getRequestActor, parseJsonObjec
   const path = requestUrl.pathname;
   const actor = getRequestActor(request);
   const fail = (status, message) => sendJson(response, status, { ok: false, message });
-  const requireGoogleUser = async (allowedRoles) => {
+  const authorizationMessage = (reason) => ({
+    google_sign_in_required: 'Sign in to the admin portal with an active, approved account to edit Welcome Journey settings.',
+    google_session_expired: 'Your admin portal session has expired. Sign out and sign back in to the admin portal.',
+    google_account_mismatch: 'The signed-in admin account could not be verified. Sign out and sign back in to the admin portal.',
+    account_not_active_approved: 'This account is not active and approved for the Gurdwara admin portal. Ask an administrator to review your account.',
+    super_admin_required: 'Only an active, approved Super Admin can edit Welcome Journey settings.',
+    admin_required: 'An active, approved administrator account is required to view visitor requests.'
+  }[reason] || 'Unable to verify your admin account for this action. Sign in again or contact an administrator.');
+  const authenticateAdminUser = async (allowedRoles) => {
     const authorization = String(request.headers.authorization || '');
     const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-    if (!token || token.startsWith('session-token-') || token.startsWith('google-session-token-')) return null;
+    if (!token || token.startsWith('session-token-') || token.startsWith('google-session-token-')) return { user: null, reason: 'google_sign_in_required' };
     let profile;
-    try { profile = await verifyGoogleAccessToken(token); } catch { return null; }
+    try { profile = await verifyGoogleAccessToken(token); } catch { return { user: null, reason: 'google_session_expired' }; }
     const email = String(profile?.email || '').trim().toLowerCase();
-    if (!email || email !== String(actor.email || '').trim().toLowerCase() || profile?.email_verified !== true) return null;
+    if (!email || email !== String(actor.email || '').trim().toLowerCase() || profile?.email_verified !== true) return { user: null, reason: 'google_account_mismatch' };
     const users = await eventsDb.listItems('users');
     const user = (Array.isArray(users) ? users : []).find((entry) => String(entry?.email || '').trim().toLowerCase() === email);
     const role = String(user?.role || '').trim().toLowerCase();
-    if (user?.isActive !== true || String(user?.approvalStatus || '').trim().toLowerCase() !== 'approved' || !allowedRoles.includes(role)) return null;
-    if (actor.role && String(actor.role).trim().toLowerCase() !== role) return null;
-    return { email, role, user };
+    if (!user || user.isActive !== true || String(user.approvalStatus || '').trim().toLowerCase() !== 'approved') return { user: null, reason: 'account_not_active_approved' };
+    if (!allowedRoles.includes(role)) return { user: null, reason: allowedRoles.length === 1 && allowedRoles[0] === 'super admin' ? 'super_admin_required' : 'admin_required' };
+    if (actor.role && String(actor.role).trim().toLowerCase() !== role) return { user: null, reason: 'google_account_mismatch' };
+    return { user: { email, role, user }, reason: null };
   };
 
   try {
@@ -31,13 +40,13 @@ const createWelcomeJourneyHandler = ({ eventsDb, getRequestActor, parseJsonObjec
     if (path === '/api/welcome-journey/settings' && request.method === 'GET') {
       const saved = await eventsDb.getSingleton('welcome_journey_settings', null);
       const settings = normalizeWelcomeJourneySettings(saved || DEFAULT_WELCOME_JOURNEY_SETTINGS);
-      let canSave = false;
-      try { canSave = Boolean(await requireGoogleUser(['super admin'])); } catch { canSave = false; }
-      return sendJson(response, 200, { ok: true, data: { ...settings, canSave, followUpAvailable: true } });
+      let access = { user: null, reason: 'google_sign_in_required' };
+      try { access = await authenticateAdminUser(['super admin']); } catch { access = { user: null, reason: 'account_not_active_approved' }; }
+      return sendJson(response, 200, { ok: true, data: { ...settings, canSave: Boolean(access.user), canSaveReason: access.reason, followUpAvailable: true } });
     }
     if (path === '/api/welcome-journey/settings' && request.method === 'PUT') {
-      const authenticated = await requireGoogleUser(['super admin']);
-      if (!authenticated) return fail(403, 'Please sign in with an active, approved Super Admin Google account to edit Welcome Journey settings.');
+      const access = await authenticateAdminUser(['super admin']);
+      if (!access.user) return fail(403, authorizationMessage(access.reason));
       const body = await parseJsonObjectBody(request, { maxBytes: 64 * 1024, allowEmpty: false });
       const allowedKeys = new Set(Object.keys(DEFAULT_WELCOME_JOURNEY_SETTINGS));
       const submittedSettings = Object.fromEntries(Object.entries(body).filter(([key]) => allowedKeys.has(key)));
@@ -61,8 +70,8 @@ const createWelcomeJourneyHandler = ({ eventsDb, getRequestActor, parseJsonObjec
       return sendJson(response, 201, { ok: true, data: { id: saved.id, status: saved.status, submittedAt: saved.submittedAt } });
     }
     if (path === '/api/welcome-journey/follow-ups' && request.method === 'GET') {
-      const authenticated = await requireGoogleUser(['admin', 'super admin']);
-      if (!authenticated) return fail(403, 'Please sign in with an active, approved Admin Google account to view visitor requests.');
+      const access = await authenticateAdminUser(['admin', 'super admin']);
+      if (!access.user) return fail(403, authorizationMessage(access.reason));
       const entries = await eventsDb.listItems('welcome_journey_follow_ups');
       const sorted = (Array.isArray(entries) ? entries : []).sort((a, b) => String(b?.submittedAt || '').localeCompare(String(a?.submittedAt || '')));
       return sendJson(response, 200, { ok: true, data: sorted.slice(0, 100) });

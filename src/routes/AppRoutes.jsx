@@ -112,10 +112,10 @@ const AppRoutes = () => {
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/welcome" element={<WelcomeJourneyPage />} />
           <Route path="*" element={<CustomCmsPage />} />
         </Route>
 
+        <Route path="/welcome" element={<WelcomeJourneyPage />} />
         <Route path="/donationsuccess" element={<DonationSuccessPage />} />
         <Route path="/quick-donate" element={<QuickDonatePage />} />
         <Route path="/quick-donate-board" element={<LedEmergencyGuard><QuickDonateBoardPage /></LedEmergencyGuard>} />

@@ -1,9 +1,11 @@
 const BRANDING_RESOURCE = 'gurdwara_branding';
 const LEGACY_BRANDING_RESOURCE = 'ask_granthi_branding';
+const DEFAULT_ORGANIZATION_NAME = String(process.env.ORGANIZATION_NAME || 'Your Gurdwara').trim();
+const DEFAULT_ORGANIZATION_SHORT_NAME = String(process.env.ORGANIZATION_SHORT_NAME || DEFAULT_ORGANIZATION_NAME).trim();
 
 const DEFAULT_GURDWARA_BRANDING = Object.freeze({
-  organizationName: 'Gurdwara Singh Sabha Milton',
-  shortName: 'Singh Sabha Milton',
+  organizationName: DEFAULT_ORGANIZATION_NAME,
+  shortName: DEFAULT_ORGANIZATION_SHORT_NAME,
   logoUrl: '',
   primaryColor: '#0B4EA2',
   accentColor: '#F4A300',

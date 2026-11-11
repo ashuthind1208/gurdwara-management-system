@@ -88,12 +88,12 @@ test('offers verified Gurdwara and Nitnem sources as configurable dropdowns', as
   await userEvent.click(screen.getByRole('button', { name: 'Gurbani', exact: true }));
   await userEvent.click(screen.getByRole('button', { name: /^Gurdwara Hukamnama/ }));
   const gurdwaraSelect = screen.getByRole('combobox', { name: 'Gurdwara Hukamnama source' });
-  expect(within(gurdwaraSelect).getAllByRole('option').map((option) => option.value)).toEqual(['Sri Harmandir Sahib (BaniDB)', 'Singh Sabha Milton']);
-  await userEvent.selectOptions(gurdwaraSelect, 'Singh Sabha Milton');
+  expect(within(gurdwaraSelect).getAllByRole('option').map((option) => option.value)).toEqual(['Sri Harmandir Sahib (BaniDB)', 'This Gurdwara']);
+  await userEvent.selectOptions(gurdwaraSelect, 'This Gurdwara');
   await waitFor(() => expect(screen.getByRole('button', { name: 'Add to page' })).toBeEnabled());
   await userEvent.click(screen.getByRole('button', { name: 'Add to page' }));
   expect(await screen.findByText('Page connections saved.')).toBeInTheDocument();
-  expect(widgetPlacementService.save).toHaveBeenCalledWith(expect.objectContaining({ placements: expect.arrayContaining([expect.objectContaining({ widgetId: 'gurdwara-hukamnama', config: expect.objectContaining({ gurdwara: 'Singh Sabha Milton' }) })]) }));
+  expect(widgetPlacementService.save).toHaveBeenCalledWith(expect.objectContaining({ placements: expect.arrayContaining([expect.objectContaining({ widgetId: 'gurdwara-hukamnama', config: expect.objectContaining({ gurdwara: 'This Gurdwara' }) })]) }));
   await userEvent.click(screen.getByRole('button', { name: /^Nitnem Bani Reader/ }));
   expect(screen.getByRole('combobox', { name: 'Nitnem bani' })).toHaveValue('Japji Sahib');
 });

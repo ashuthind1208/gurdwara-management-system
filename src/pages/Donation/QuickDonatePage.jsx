@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Elements, ExpressCheckoutElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useBranding } from '../../context/BrandingContext';
+import { siteConfig } from '../../constants/siteConfig';
 import donationService from '../../services/donationService';
 import { QUICK_DONATE_AMOUNTS, parseQuickDonateCustomAmount, selectQuickDonateCampaign } from '../../utils/quickDonate';
 import { readActiveQuickDonation, rememberActiveQuickDonation } from '../../utils/quickDonateConfirmation';
@@ -141,7 +142,7 @@ const QuickDonatePage = () => {
   const campaignIds = searchParams.getAll('campaign');
   const campaign = campaignIds.length > 1 ? null : selectQuickDonateCampaign(data, searchParams.get('campaign'));
   const stripePromise = useMemo(() => stripeConfig?.configured && stripeConfig?.publishableKey?.startsWith('pk_test_') ? loadStripe(stripeConfig.publishableKey) : null, [stripeConfig?.configured, stripeConfig?.publishableKey]);
-  const organizationName = branding?.organizationName || 'Singh Sabha Milton';
+  const organizationName = branding?.organizationName || siteConfig.name;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-5 py-10 text-[#102a43]">

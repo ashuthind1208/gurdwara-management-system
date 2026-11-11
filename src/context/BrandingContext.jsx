@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import brandingService from '../services/brandingService';
-import gurdwaraLogo from '../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../assets/default-gurdwara.svg';
 
 export const DEFAULT_GURDWARA_BRANDING = Object.freeze({
-  organizationName: 'Gurdwara Singh Sabha Milton', shortName: 'Singh Sabha Milton', logoUrl: '',
+  organizationName: String(process.env.REACT_APP_ORGANIZATION_NAME || 'Your Gurdwara').trim(),
+  shortName: String(process.env.REACT_APP_ORGANIZATION_SHORT_NAME || process.env.REACT_APP_ORGANIZATION_NAME || 'Your Gurdwara').trim(), logoUrl: '',
   primaryColor: '#0B4EA2', accentColor: '#F4A300', surfaceColor: '#FFF8E8', footerColor: '',
   textColor: '', buttonColor: '', buttonHoverColor: '', linkColor: '', linkHoverColor: '',
   tagline: 'A spiritually rooted and community focused digital platform for sangat services.',

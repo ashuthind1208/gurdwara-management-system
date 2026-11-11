@@ -27,20 +27,19 @@ const normalizeDarbarSahibStreamUrl = (value = '') => {
 };
 
 export const siteConfig = {
-  name: 'Singh Sabha Milton Gurdwara',
-  shortName: 'Singh Sabha Milton',
-  baseUrl: 'https://singhsabhamilton.com',
-  description:
-    'A digital sangat platform for events, seva, education, daily hukamnama, and online donations.',
+  name: String(process.env.REACT_APP_ORGANIZATION_NAME || 'Your Gurdwara').trim(),
+  shortName: String(process.env.REACT_APP_ORGANIZATION_SHORT_NAME || process.env.REACT_APP_ORGANIZATION_NAME || 'Your Gurdwara').trim(),
+  baseUrl: String(process.env.REACT_APP_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')).trim().replace(/\/+$/, ''),
+  description: String(process.env.REACT_APP_SITE_DESCRIPTION || 'A digital platform for Gurdwara services, community programs, education, and donations.').trim(),
   contact: {
-    phone: '+1 (905) 546-7035',
-    email: 'singhsabhamilton@gmail.com',
-    address: '7035 Sixth Line, Milton ON'
+    phone: String(process.env.REACT_APP_CONTACT_PHONE || '').trim(),
+    email: String(process.env.REACT_APP_CONTACT_EMAIL || '').trim(),
+    address: String(process.env.REACT_APP_CONTACT_ADDRESS || '').trim()
   },
   social: {
-    youtube: 'https://www.youtube.com/@SinghSabhaMilton',
-    facebook: 'https://facebook.com/singhsabhamilton',
-    instagram: 'https://www.instagram.com/miltongurdwara/'
+    youtube: String(process.env.REACT_APP_YOUTUBE_URL || '').trim(),
+    facebook: String(process.env.REACT_APP_FACEBOOK_URL || '').trim(),
+    instagram: String(process.env.REACT_APP_INSTAGRAM_URL || '').trim()
   },
   liveKirtanStreamUrl: normalizeDarbarSahibStreamUrl(
     process.env.REACT_APP_DARBAR_SAHIB_STREAM_URL ||

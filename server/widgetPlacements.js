@@ -100,7 +100,7 @@ const sanitizePlacement = (placement, { publicRead = false } = {}) => {
     if (publicRead) delete sanitizedConfig[key];
     else check(false, `Invalid ${key} selection.`);
   };
-  if (widgetId === 'gurdwara-hukamnama') validSelection('gurdwara', (value) => ['Sri Harmandir Sahib (BaniDB)', 'Singh Sabha Milton'].includes(value));
+  if (widgetId === 'gurdwara-hukamnama') validSelection('gurdwara', (value) => ['Sri Harmandir Sahib (BaniDB)', 'This Gurdwara'].includes(value));
   if (widgetId === 'gurbani-ang') validSelection('ang', (value) => Number.isInteger(value) && value >= 1 && value <= 1430);
   if (widgetId === 'nitnem-reader') validSelection('bani', (value) => ['Japji Sahib', 'Rehras Sahib', 'Kirtan Sohila'].includes(value));
   if (widgetId === 'gurbani-search') validSelection('mode', (value) => ['Gurmukhi', 'English', 'Anywhere'].includes(value));

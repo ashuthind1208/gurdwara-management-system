@@ -7,6 +7,7 @@ import useSeoMeta from '../../hooks/useSeoMeta';
 import Seo from '../../components/common/Seo';
 import cmsService from '../../services/cmsService';
 import userService from '../../services/userService';
+import { useBranding } from '../../context/BrandingContext';
 
 const isImageUrl = (value = '') => /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(String(value || ''));
 
@@ -32,6 +33,7 @@ const formatMemberSince = (value = '') => {
 };
 
 const AboutPage = () => {
+  const { branding } = useBranding();
   const [selectedMember, setSelectedMember] = useState(null);
   const meta = useSeoMeta('About', 'History, mission, leadership, and management details of the Gurdwara.');
   const { data: content } = useQuery({
@@ -120,7 +122,7 @@ const AboutPage = () => {
             <header className="flex items-center justify-between gap-3 bg-brand-navy px-5 py-4 text-white sm:px-6">
               <div>
                 <p className="text-[10px] font-bold uppercase text-blue-200">Community profile</p>
-                <p className="mt-1 font-heading text-lg font-semibold">Singh Sabha Milton</p>
+                <p className="mt-1 font-heading text-lg font-semibold">{branding.organizationName}</p>
               </div>
               <button type="button" onClick={() => setSelectedMember(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10" aria-label="Close member details">
                 <XMarkIcon className="h-5 w-5" />

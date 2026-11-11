@@ -122,7 +122,7 @@ const authService = {
       }
     });
   },
-  loginWithGoogle: async ({ email, name, avatarUrl, intent = 'signin' }) => {
+  loginWithGoogle: async ({ email, name, avatarUrl, intent = 'signin', googleAccessToken }) => {
     const resolvedEmail = String(email || '').trim();
     if (!resolvedEmail) {
       throw new Error('Email is required for Google login.');
@@ -149,7 +149,7 @@ const authService = {
     }).then((res) => res.data);
 
     return serviceResponse({
-      token: `google-session-token-${Date.now()}`,
+      token: googleAccessToken || `google-session-token-${Date.now()}`,
       user: {
         ...persisted,
         id: persisted.id,
@@ -161,7 +161,7 @@ const authService = {
       wasExistingUser: Boolean(existingUser)
     });
   },
-  completeRegistration: async ({ email, name, phone, address, memberType, role, avatarUrl }) => {
+  completeRegistration: async ({ email, name, phone, address, memberType, role, avatarUrl, googleAccessToken }) => {
     const assignedRole = getAssignedRole({ email, fallbackRole: role || userRoles.FAMILY });
     const updatedUser = await userService.completeRegistration({
       email,
@@ -174,7 +174,7 @@ const authService = {
     }).then((res) => res.data);
 
     return serviceResponse({
-      token: `google-session-token-${Date.now()}`,
+      token: googleAccessToken || `google-session-token-${Date.now()}`,
       user: {
         ...updatedUser,
         role: getAssignedRole({ email: updatedUser.email, fallbackRole: updatedUser.role || assignedRole })

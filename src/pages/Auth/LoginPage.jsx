@@ -286,6 +286,7 @@ const LoginPage = () => {
           email: profile.email,
           name: profile.name,
           avatarUrl: profile.picture,
+          googleAccessToken: accessToken,
           intent: activeIntent
         });
         clearGoogleOAuthCallbackHash();

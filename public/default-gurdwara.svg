@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Gurdwara placeholder logo">
+  <rect width="256" height="256" rx="128" fill="#0b3b76"/>
+  <circle cx="128" cy="128" r="108" fill="none" stroke="#f4a300" stroke-width="8"/>
+  <path d="M56 174h144M72 164V112h112v52M88 112V92h80v20M103 92V76h50v16M118 76V62h20v14M86 134h18v30H86zm33 0h18v30h-18zm33 0h18v30h-18z" fill="none" stroke="#fff8e8" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"/>
+  <path d="M128 37l10 17h-20z" fill="#f4a300"/>
+</svg>

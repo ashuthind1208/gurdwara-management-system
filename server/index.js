@@ -108,7 +108,7 @@ const { createWidgetPlacementsHandler, projectPublicWidgetPlacements } = require
 const openWaNotifications = createOpenWaNotifications({ db: eventsDb });
 const langarBoardEventClients = new Set();
 
-const siteBaseUrl = String(process.env.SITE_BASE_URL || process.env.PUBLIC_SITE_URL || 'https://singhsabhamilton.com').trim().replace(/\/+$/, '');
+const siteBaseUrl = String(process.env.SITE_BASE_URL || process.env.PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
 const openWaLink = (pathname) => `${siteBaseUrl}${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
 const enqueueOpenWa = (options) => openWaNotifications.enqueue(options).catch((error) => {
   console.warn('OpenWA notification enqueue failed:', error.message || error);
@@ -237,8 +237,17 @@ const volunteerReminderWebhookUrl = resolveLocalWebhookUrl(
   '/api/internal/mail-relay'
 );
 const volunteerReminderLogoUrl = String(process.env.VOLUNTEER_REMINDER_LOGO_URL || '').trim();
-const volunteerReminderSiteName = String(process.env.VOLUNTEER_REMINDER_ORG_NAME || 'Singh Sabha Milton Gurdwara').trim();
-const volunteerReminderBaseUrl = String(process.env.VOLUNTEER_REMINDER_BASE_URL || 'http://localhost:3001').trim().replace(/\/$/, '');
+const volunteerReminderLogoPath = String(process.env.VOLUNTEER_REMINDER_LOGO_PATH || '').trim();
+const defaultOrganizationName = String(process.env.ORGANIZATION_NAME || 'Your Gurdwara').trim();
+const defaultOrganizationShortName = String(process.env.ORGANIZATION_SHORT_NAME || defaultOrganizationName).trim();
+const defaultOrganizationAddress = String(process.env.ORGANIZATION_ADDRESS || '').trim();
+const defaultOrganizationPhone = String(process.env.ORGANIZATION_PHONE || '').trim();
+const defaultOrganizationEmail = String(process.env.ORGANIZATION_EMAIL || '').trim();
+const defaultOrganizationContactLine = [defaultOrganizationAddress, defaultOrganizationPhone, defaultOrganizationEmail].filter(Boolean).join(' | ');
+const publicSiteBaseUrl = String(process.env.PUBLIC_SITE_URL || process.env.SITE_BASE_URL || '').trim().replace(/\/$/, '');
+const calendarUidDomain = (() => { try { return new URL(publicSiteBaseUrl).hostname; } catch { return 'example.invalid'; } })();
+const volunteerReminderSiteName = String(process.env.VOLUNTEER_REMINDER_ORG_NAME || defaultOrganizationName).trim();
+const volunteerReminderBaseUrl = String(process.env.VOLUNTEER_REMINDER_BASE_URL || publicSiteBaseUrl || 'http://localhost:3001').trim().replace(/\/$/, '');
 const volunteerReminderHtmlTemplateEnabled = String(process.env.VOLUNTEER_REMINDER_HTML_TEMPLATE_ENABLED || 'true').trim().toLowerCase() !== 'false';
 const volunteerReminderSendTimeRaw = String(process.env.VOLUNTEER_REMINDER_SEND_TIME || '09:00').trim();
 const volunteerReminderTimeZone = String(process.env.VOLUNTEER_REMINDER_TIME_ZONE || 'America/Toronto').trim() || 'America/Toronto';
@@ -272,7 +281,7 @@ const membershipReminderWebhookUrl = resolveLocalWebhookUrl(
   '/api/internal/mail-relay'
 );
 const membershipReminderDays = [30, 15, 10, 5, 2];
-const localMailFromAddress = String(process.env.LOCAL_MAIL_FROM || 'no-reply@singhsabhamilton.local').trim() || 'no-reply@singhsabhamilton.local';
+const localMailFromAddress = String(process.env.LOCAL_MAIL_FROM || 'no-reply@localhost').trim() || 'no-reply@localhost';
 const localMailTransport = String(process.env.LOCAL_MAIL_TRANSPORT || 'sendmail').trim().toLowerCase();
 const smtpProvider = String(process.env.SMTP_PROVIDER || 'gmail').trim().toLowerCase();
 const supportedSmtpProviders = new Set(['gmail', 'smtp2go', 'custom']);
@@ -414,7 +423,7 @@ const notifyAppUpdate = ({ title, body, url = '/', tag = 'ssm-update', icon, bad
   const uniqueTag = `${String(tag || 'ssm-update').slice(0, 80)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   pushNotifications.broadcastNotification(eventsDb, {
     title,
-    body: `${String(body || '').trim()} You are receiving this because you enabled Singh Sabha Milton app notifications.`,
+    body: `${String(body || '').trim()} You are receiving this because you enabled ${defaultOrganizationShortName} app notifications.`,
     url,
     tag: uniqueTag,
     icon,
@@ -556,35 +565,22 @@ const runScheduledVolunteerReminderSweep = async () => {
 };
 
 const buildLogoDataUri = () => {
-  const candidates = [
-    { filePath: path.join(workspaceRoot, 'public', 'logo192.png'), contentType: 'image/png' },
-    { filePath: path.join(workspaceRoot, 'src', 'assets', 'gurdwara-logo.webp'), contentType: 'image/webp' },
-    { filePath: path.join(workspaceRoot, 'public', 'gurdwara-logo.webp'), contentType: 'image/webp' }
-  ];
-
-  for (const candidate of candidates) {
-    try {
-      if (!fs.existsSync(candidate.filePath)) {
-        continue;
-      }
-      const binary = fs.readFileSync(candidate.filePath);
-      if (!binary?.length) {
-        continue;
-      }
-      return `data:${candidate.contentType};base64,${binary.toString('base64')}`;
-    } catch {
-      // Ignore logo read failure and continue to next source.
-    }
-  }
-
+  if (!volunteerReminderLogoPath || !fs.existsSync(volunteerReminderLogoPath)) return '';
+  const extension = path.extname(volunteerReminderLogoPath).toLowerCase();
+  const contentType = extension === '.png' ? 'image/png' : extension === '.jpg' || extension === '.jpeg' ? 'image/jpeg' : extension === '.webp' ? 'image/webp' : '';
+  if (!contentType) return '';
+  try {
+    const binary = fs.readFileSync(volunteerReminderLogoPath);
+    if (binary.length) return `data:${contentType};base64,${binary.toString('base64')}`;
+  } catch { /* Optional branded logo; omit when unreadable. */ }
   return '';
 };
 
 const embeddedVolunteerReminderLogo = buildLogoDataUri();
-const emailLogoContentId = 'singh-sabha-milton-logo';
+const emailLogoContentId = 'gurdwara-brand-logo';
 const emailLogoSrc = embeddedVolunteerReminderLogo
   ? `cid:${emailLogoContentId}`
-  : volunteerReminderLogoUrl || `${volunteerReminderBaseUrl}/logo192.png`;
+  : volunteerReminderLogoUrl;
 const buildInlineEmailLogoAttachment = () => {
   const match = embeddedVolunteerReminderLogo.match(/^data:([^;,]+);base64,(.+)$/);
   if (!match) {
@@ -593,7 +589,7 @@ const buildInlineEmailLogoAttachment = () => {
 
   const contentType = match[1];
   return {
-    filename: contentType === 'image/png' ? 'singh-sabha-milton-logo.png' : 'singh-sabha-milton-logo.webp',
+    filename: contentType === 'image/png' ? 'gurdwara-brand-logo.png' : contentType === 'image/jpeg' ? 'gurdwara-brand-logo.jpg' : 'gurdwara-brand-logo.webp',
     contentType,
     content: match[2],
     encoding: 'base64',
@@ -684,23 +680,23 @@ const getDefaultAdminPageAccessForRole = (role) => {
   return [];
 };
 
-const seedUsers = [
-  {
-    id: 'user-1',
-    name: 'Admin Singh',
-    role: 'Super Admin',
-    email: 'admin@singhsabhamilton.org',
-    phone: '',
-    address: '',
-    memberType: 'Admin',
-    authProvider: 'LOCAL',
-    avatarUrl: '',
-    registrationComplete: true,
-    approvalStatus: 'approved',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+const bootstrapAdminEmail = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
+const seedUsers = bootstrapAdminEmail ? [{
+  id: 'bootstrap-super-admin',
+  name: String(process.env.BOOTSTRAP_ADMIN_NAME || 'Gurdwara Administrator').trim(),
+  role: 'Super Admin',
+  email: bootstrapAdminEmail,
+  phone: '',
+  address: '',
+  memberType: 'Admin',
+  authProvider: 'GOOGLE',
+  avatarUrl: '',
+  registrationComplete: true,
+  approvalStatus: 'approved',
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+}] : [];
 
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 const whatsappWebhookHandler = createWhatsAppWebhookHandler({
@@ -1002,11 +998,11 @@ const normalizeAttachmentList = (payload = {}) => {
 };
 
 const buildMimeEmail = ({ from, toList, bccList = [], subject, textBody, htmlBody, attachments = [] }) => {
-  const safeFrom = sanitizeHeaderValue(from || 'no-reply@singhsabhamilton.local') || 'no-reply@singhsabhamilton.local';
+  const safeFrom = sanitizeHeaderValue(from || localMailFromAddress) || localMailFromAddress;
   const safeSubject = sanitizeHeaderValue(subject || 'Notification');
   const safeTo = toList.map((entry) => sanitizeHeaderValue(entry)).filter(Boolean).join(', ') || 'undisclosed-recipients:;';
   const safeBcc = bccList.map((entry) => sanitizeHeaderValue(entry)).filter(Boolean).join(', ');
-  const plainText = String(textBody || '').trim() || 'Notification from Singh Sabha Milton.';
+  const plainText = String(textBody || '').trim() || `Notification from ${defaultOrganizationName}.`;
   const html = String(htmlBody || '').trim();
 
   const headers = [
@@ -1105,7 +1101,7 @@ const sendViaLocalSendmail = async ({ from, toList, bccList, subject, textBody, 
   const envelopeFromCandidate = extractEmailAddress(from);
   const envelopeFrom = isValidEmailAddress(envelopeFromCandidate)
     ? envelopeFromCandidate
-    : 'no-reply@singhsabhamilton.local';
+    : localMailFromAddress;
 
   await new Promise((resolve, reject) => {
     const child = spawn('/usr/sbin/sendmail', ['-t', '-oi', '-f', envelopeFrom]);
@@ -1252,8 +1248,8 @@ const deliverWorkflowEmail = async (webhookUrl, payload = {}) => {
     throwInputError('Recipient address required.');
   }
 
-  const subject = sanitizeHeaderValue(deliveryPayload.subject || deliveryPayload.title || 'Singh Sabha Milton Notification')
-    || 'Singh Sabha Milton Notification';
+  const subject = sanitizeHeaderValue(deliveryPayload.subject || deliveryPayload.title || `${defaultOrganizationShortName} Notification`)
+    || `${defaultOrganizationShortName} Notification`;
   const htmlBody = String(deliveryPayload.html || deliveryPayload.bodyHtml || deliveryPayload.content || deliveryPayload.message || '').trim();
   const textBody = String(deliveryPayload.text || deliveryPayload.bodyText || deliveryPayload.message || '').trim();
   const attachments = normalizeAttachmentList(deliveryPayload);
@@ -1310,8 +1306,8 @@ const parseNewsletterUnsubscribeToken = (token = '') => {
 };
 
 const appendNewsletterUnsubscribe = ({ htmlBody = '', textBody = '', unsubscribeUrl = '' }) => ({
-  htmlBody: `${String(htmlBody || '')}<div style="max-width:760px;margin:0 auto;padding:16px 24px 28px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#64748b;">You are receiving this email because you subscribed to Singh Sabha Milton updates.<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#0b67c2;text-decoration:underline;">Unsubscribe from this newsletter</a></div>`,
-  textBody: `${String(textBody || '').trim()}\n\nYou are receiving this email because you subscribed to Singh Sabha Milton updates.\nUnsubscribe: ${unsubscribeUrl}`.trim()
+  htmlBody: `${String(htmlBody || '')}<div style="max-width:760px;margin:0 auto;padding:16px 24px 28px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#64748b;">You are receiving this email because you subscribed to ${escapeHtml(defaultOrganizationShortName)} updates.<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#0b67c2;text-decoration:underline;">Unsubscribe from this newsletter</a></div>`,
+  textBody: `${String(textBody || '').trim()}\n\nYou are receiving this email because you subscribed to ${defaultOrganizationShortName} updates.\nUnsubscribe: ${unsubscribeUrl}`.trim()
 });
 
 const sendNewsletterPrivately = async ({ relayPayload, recipients, subject, htmlBody, textBody, attachments }) => {
@@ -2151,7 +2147,7 @@ const startDarbarSahibHls = (sourceUrl = darbarSahibStreamSource, redirectsRemai
     headers: {
       Accept: 'audio/aac,audio/aacp,audio/*;q=0.9,*/*;q=0.1',
       'Icy-MetaData': '0',
-      'User-Agent': 'SinghSabhaMilton/1.0'
+      'User-Agent': 'GurdwaraCommunityPlatform/1.0'
     }
   }, (upstreamResponse) => {
     const statusCode = Number(upstreamResponse.statusCode || 502);
@@ -2227,7 +2223,7 @@ const proxyDarbarSahibAudio = (request, response, sourceUrl = darbarSahibStreamS
     headers: {
       Accept: 'audio/aac,audio/aacp,audio/*;q=0.9,*/*;q=0.1',
       'Icy-MetaData': '0',
-      'User-Agent': 'SinghSabhaMilton/1.0'
+      'User-Agent': 'GurdwaraCommunityPlatform/1.0'
     }
   }, (upstreamResponse) => {
     const statusCode = Number(upstreamResponse.statusCode || 502);
@@ -2448,11 +2444,11 @@ const buildEventIcsBody = (event, urlBase = '') => {
     return '';
   }
 
-  const uid = `${String(event?.id || 'event')}-ssm@singhsabhamilton.org`;
+  const uid = `${String(event?.id || 'event')}@${calendarUidDomain}`;
   const created = formatIcsDateUtc(new Date());
   const startUtc = formatIcsDateUtc(start);
   const endUtc = formatIcsDateUtc(end);
-  const location = escapeIcsText(event?.location || 'Singh Sabha Milton Gurdwara');
+  const location = escapeIcsText(event?.location || defaultOrganizationName);
   const title = escapeIcsText(event?.title || 'Event');
   const description = escapeIcsText(event?.description || 'Sangat event');
   const eventUrl = urlBase
@@ -2462,7 +2458,7 @@ const buildEventIcsBody = (event, urlBase = '') => {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Singh Sabha Milton//Events Calendar//EN',
+    'PRODID:-//Gurdwara Community Platform//Events Calendar//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -2485,7 +2481,7 @@ const buildEventsCalendarIcsBody = (events = [], urlBase = '') => {
   const header = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Singh Sabha Milton//Events Calendar//EN',
+    'PRODID:-//Gurdwara Community Platform//Events Calendar//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH'
   ];
@@ -2508,13 +2504,13 @@ const buildEventsCalendarIcsBody = (events = [], urlBase = '') => {
 
       return [
         'BEGIN:VEVENT',
-        `UID:${String(event.id || `event-${start.getTime()}`)}-ssm@singhsabhamilton.org`,
+        `UID:${String(event.id || `event-${start.getTime()}`)}@${calendarUidDomain}`,
         `DTSTAMP:${nowStamp}`,
         `DTSTART:${formatIcsDateUtc(start)}`,
         `DTEND:${formatIcsDateUtc(end)}`,
         `SUMMARY:${escapeIcsText(event.title || 'Event')}`,
         `DESCRIPTION:${escapeIcsText(event.description || 'Sangat event')}`,
-        `LOCATION:${escapeIcsText(event.location || 'Singh Sabha Milton Gurdwara')}`,
+        `LOCATION:${escapeIcsText(event.location || defaultOrganizationName)}`,
         ...(eventUrl ? [`URL:${escapeIcsText(eventUrl)}`] : []),
         'END:VEVENT'
       ].join('\r\n');
@@ -2803,7 +2799,7 @@ const escapeHtml = (value) => String(value || '')
 
 const buildContactInquiryEmail = ({ name = '', email = '', phone = '', message = '', subject = '' }) => {
   const logoSrc = emailLogoSrc;
-  const siteName = String(volunteerReminderSiteName || 'Singh Sabha Milton Gurdwara').trim();
+  const siteName = String(volunteerReminderSiteName || defaultOrganizationName).trim();
   const recipientSubject = sanitizeHeaderValue(subject || `Contact Us Inquiry from ${name}`) || 'Contact Us Inquiry';
   const contactMessage = String(message || '').trim();
   const submittedAt = new Date().toLocaleString('en-CA', {
@@ -2891,7 +2887,7 @@ const buildVolunteerReminderEmail = ({ registration, daysRemaining = null, manua
   const sevaDateLabel = formatSevaDateLabel(registration.sevaDate);
   const timeLabel = registration.sevaTime || 'Time TBD';
   const logoSrc = emailLogoSrc;
-  const baseUrl = String(volunteerReminderBaseUrl || 'https://singhsabhamilton.com').trim().replace(/\/+$/, '');
+  const baseUrl = String(volunteerReminderBaseUrl || publicSiteBaseUrl).trim().replace(/\/+$/, '');
   const sevaUrl = `${baseUrl}/seva`;
   const contactUrl = `${baseUrl}/contact`;
   const eventsUrl = `${baseUrl}/events`;
@@ -3269,7 +3265,7 @@ const buildEventReminderEmail = ({ registration, daysRemaining = null }) => {
     ? `${formatDateTimeLabel(registration.eventDate, eventDateLabel)} - ${formatDateTimeLabel(registration.eventEndDate, 'End TBD')}`
     : eventDateLabel;
   const logoSrc = emailLogoSrc;
-  const baseUrl = String(volunteerReminderBaseUrl || 'https://singhsabhamilton.com').trim().replace(/\/+$/, '');
+  const baseUrl = String(volunteerReminderBaseUrl || publicSiteBaseUrl).trim().replace(/\/+$/, '');
   const eventsUrl = `${baseUrl}/events`;
   const contactUrl = `${baseUrl}/contact`;
   const calendarUrl = registration.eventId ? `${baseUrl}/api/events/${encodeURIComponent(String(registration.eventId))}/calendar.ics` : '';
@@ -3291,7 +3287,7 @@ const buildEventReminderEmail = ({ registration, daysRemaining = null }) => {
     `This is your ${registrationType} reminder for the upcoming event.`,
     `Event: ${registration.eventTitle}`,
     `Date and Time: ${timeLabel}`,
-    `Location: ${registration.eventLocation || 'Singh Sabha Milton Gurdwara'}`,
+    `Location: ${registration.eventLocation || defaultOrganizationName}`,
     `Events Page: ${eventsUrl}`,
     calendarUrl ? `Add to Calendar: ${calendarUrl}` : '',
     `Contact: ${contactUrl}`,
@@ -3349,7 +3345,7 @@ const buildEventReminderEmail = ({ registration, daysRemaining = null }) => {
             </tr>
             <tr>
               <td style="padding:12px 14px;background:#eef5ff;border-bottom:1px solid #d7e3f3;font-size:14px;font-weight:700;color:#0a4d9f;">Location</td>
-              <td style="padding:12px 14px;border-bottom:1px solid #d7e3f3;font-size:17px;font-weight:800;color:#0f172a;">${escapeHtml(registration.eventLocation || 'Singh Sabha Milton Gurdwara')}</td>
+              <td style="padding:12px 14px;border-bottom:1px solid #d7e3f3;font-size:17px;font-weight:800;color:#0f172a;">${escapeHtml(registration.eventLocation || defaultOrganizationName)}</td>
             </tr>
             <tr>
               <td style="padding:12px 14px;background:#eef5ff;font-size:14px;font-weight:700;color:#0a4d9f;">Gurdwara</td>
@@ -3446,7 +3442,7 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
     : String(registration.eventLocation || volunteerReminderSiteName).trim();
   const recipientName = String(registration.name || 'Sangat Member').trim();
   const logoSrc = emailLogoSrc;
-  const baseUrl = String(volunteerReminderBaseUrl || 'https://singhsabhamilton.com').trim().replace(/\/+$/, '');
+  const baseUrl = String(volunteerReminderBaseUrl || publicSiteBaseUrl).trim().replace(/\/+$/, '');
   const detailsUrl = `${baseUrl}/${isSeva ? 'seva' : 'events'}`;
   const contactUrl = `${baseUrl}/contact`;
   const typeLabel = isSeva ? 'Seva' : 'Event';
@@ -3487,7 +3483,7 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
     `Contact: ${contactUrl}`,
     '',
     volunteerReminderSiteName,
-    '7035 Sixth Line, Milton ON | +1 (905) 546-7035 | singhsabhamilton@gmail.com'
+    defaultOrganizationContactLine
   ].join('\n');
   const rowsHtml = detailRows.map(([label, value], index) => `
             <tr>
@@ -3512,8 +3508,10 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
         <div style="margin-top:16px;"><a href="${escapeHtml(detailsUrl)}" style="display:inline-block;border-radius:8px;background:#0b67c2;padding:11px 16px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;">View ${escapeHtml(typeLabel)} Details</a></div>
         <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:12px;line-height:1.8;color:#64748b;">
           <div style="font-weight:700;color:#334155;">${escapeHtml(volunteerReminderSiteName)}</div>
-          <div>7035 Sixth Line, Milton ON | +1 (905) 546-7035</div>
-          <div><a href="mailto:singhsabhamilton@gmail.com" style="color:#0b67c2;text-decoration:none;">singhsabhamilton@gmail.com</a> | <a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;text-decoration:none;">Contact us</a></div>
+          ${defaultOrganizationAddress ? `<div>${escapeHtml(defaultOrganizationAddress)}</div>` : ''}
+          ${defaultOrganizationPhone ? `<div>${escapeHtml(defaultOrganizationPhone)}</div>` : ''}
+          ${defaultOrganizationEmail ? `<div><a href="mailto:${escapeHtml(defaultOrganizationEmail)}" style="color:#0b67c2;text-decoration:none;">${escapeHtml(defaultOrganizationEmail)}</a></div>` : ''}
+          <div><a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;text-decoration:none;">Contact us</a></div>
         </div>
       </td></tr>
     </table>
@@ -3565,7 +3563,7 @@ const buildDonationInvoiceEmail = ({ donation = {}, organizationName = '', campa
   const donationDateLabel = donation.createdAt
     ? new Date(donation.createdAt).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
     : new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
-  const siteName = String(organizationName || volunteerReminderSiteName || 'Singh Sabha Milton Gurdwara').trim();
+  const siteName = String(organizationName || volunteerReminderSiteName || defaultOrganizationName).trim();
   const siteAddress = String(address || '').trim();
   const sitePhone = String(phone || '').trim();
   const purposeText = String(campaignDescription || '').trim() || `Support for ${campaignName}`;
@@ -3824,7 +3822,7 @@ const buildBulkDonationStatementEmail = ({
 }) => {
   const donorName = String(donor.name || 'Sangat Member').trim();
   const donorEmail = String(donor.email || '').trim().toLowerCase();
-  const siteName = String(organizationName || volunteerReminderSiteName || 'Singh Sabha Milton Gurdwara').trim();
+  const siteName = String(organizationName || volunteerReminderSiteName || defaultOrganizationName).trim();
   const totalAmount = donations.reduce((sum, donation) => sum + Number(donation?.amount || 0), 0);
   const amountText = `$${totalAmount.toFixed(2)}`;
   const periodText = dateFrom || dateTo
@@ -4082,7 +4080,7 @@ const normalizeBookingForNotification = (entry = {}) => ({
   endTime: String(entry.endTime || '').trim(),
   bookingVenueType: getBookingVenueType(entry),
   hidePublicLocation: entry.hidePublicLocation === true,
-  bookingLocation: String(entry.bookingLocation || entry.location || 'Gurdwara Singh Sabha Milton, 7035 Sixth Line, Milton, ON').trim(),
+  bookingLocation: String(entry.bookingLocation || entry.location || defaultOrganizationName).trim(),
   status: String(entry.status || '').trim().toLowerCase() === 'completed'
     ? 'confirmed'
     : String(entry.status || 'pending').trim().toLowerCase(),
@@ -4446,8 +4444,9 @@ const buildBookingReceiptPdfAttachment = (booking = {}) => {
   doc.text(volunteerReminderSiteName, 112, 42);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  doc.text('7035 Sixth Line, Milton ON', 112, 60);
-  doc.text('+1 (905) 546-7035  |  singhsabhamilton@gmail.com', 112, 77);
+  if (defaultOrganizationAddress) doc.text(defaultOrganizationAddress, 112, 60);
+  const organizationContacts = [defaultOrganizationPhone, defaultOrganizationEmail].filter(Boolean).join(' | ');
+  if (organizationContacts) doc.text(organizationContacts, 112, 77);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(isRefundReleased ? 15 : 18);
   doc.text(isRefundReleased ? 'Refund Release Confirmation' : 'Booking Receipt', pageWidth - 34, 42, { align: 'right' });
@@ -6159,7 +6158,7 @@ const resolveYouTubeLiveVideo = async (source) => {
         const pageResponse = await fetch(candidate, {
           redirect: 'follow',
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; SinghSabhaMiltonBot/1.0)'
+            'User-Agent': 'Mozilla/5.0 (compatible; GurdwaraCommunityPlatform/1.0)'
           }
         });
 
@@ -6204,7 +6203,7 @@ const resolveYouTubeLiveVideo = async (source) => {
         const pageResponse = await fetch(candidate, {
           redirect: 'follow',
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; SinghSabhaMiltonBot/1.0)'
+            'User-Agent': 'Mozilla/5.0 (compatible; GurdwaraCommunityPlatform/1.0)'
           }
         });
 
@@ -6413,7 +6412,7 @@ const socialPostingService = createSocialPostingService({
   uploadsDir,
   publicBaseUrl: newsletterPublicBaseUrl,
   timeZone: String(process.env.SOCIAL_CARDS_TIME_ZONE || volunteerReminderTimeZone || 'America/Toronto').trim(),
-  organizationName: String(process.env.SOCIAL_ORGANIZATION_NAME || 'Gurdwara Singh Sabha Milton').trim()
+  organizationName: String(process.env.SOCIAL_ORGANIZATION_NAME || defaultOrganizationName).trim()
 });
 const ledScreenService = createLedScreenService({
   eventsDb,
@@ -7058,8 +7057,8 @@ const server = http.createServer(async (request, response) => {
         return;
       }
 
-      const subject = sanitizeHeaderValue(relayPayload.subject || relayPayload.title || 'Singh Sabha Milton Notification')
-        || 'Singh Sabha Milton Notification';
+      const subject = sanitizeHeaderValue(relayPayload.subject || relayPayload.title || `${defaultOrganizationShortName} Notification`)
+        || `${defaultOrganizationShortName} Notification`;
       const htmlBody = String(relayPayload.html || relayPayload.bodyHtml || relayPayload.content || relayPayload.message || '').trim();
       const textBody = String(relayPayload.text || relayPayload.bodyText || relayPayload.message || '').trim();
       const attachments = normalizeAttachmentList(relayPayload);
@@ -7118,7 +7117,7 @@ const server = http.createServer(async (request, response) => {
         });
       }
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      response.end('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Newsletter Unsubscribed</title></head><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a"><main style="max-width:560px;margin:10vh auto;padding:32px;border-top:6px solid #f4a300;background:#fff;box-shadow:0 20px 50px rgba(15,23,42,.12)"><h1 style="margin:0;color:#052f63">You have been unsubscribed</h1><p style="line-height:1.7;color:#475569">This email address has been removed from the active Singh Sabha Milton newsletter list. You will no longer receive newsletter campaigns.</p><a href="/" style="color:#0b4ea2;font-weight:700">Return to Singh Sabha Milton</a></main></body></html>');
+      response.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Newsletter Unsubscribed</title></head><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a"><main style="max-width:560px;margin:10vh auto;padding:32px;border-top:6px solid #f4a300;background:#fff;box-shadow:0 20px 50px rgba(15,23,42,.12)"><h1 style="margin:0;color:#052f63">You have been unsubscribed</h1><p style="line-height:1.7;color:#475569">This email address has been removed from the active ${escapeHtml(defaultOrganizationShortName)} newsletter list. You will no longer receive newsletter campaigns.</p><a href="/" style="color:#0b4ea2;font-weight:700">Return to ${escapeHtml(defaultOrganizationShortName)}</a></main></body></html>`);
     } catch (error) {
       response.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       response.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invalid Unsubscribe Link</title></head><body style="font-family:Arial,sans-serif;padding:40px;color:#0f172a"><h1>Unable to unsubscribe</h1><p>${escapeHtml(error?.message || 'This unsubscribe link is invalid.')}</p></body></html>`);
@@ -7658,7 +7657,7 @@ const server = http.createServer(async (request, response) => {
             toList: [actorEmail],
             subject: `Langar seva commitment confirmation (${data.length} items)`,
             textBody: `Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh\n\n${body.anonymous ? 'Sangat member' : body.donorName || actor.name || 'Sangat member'}, thank you for your Langar seva. Your commitments have been recorded:\n\n${listText}\n\nThank you for supporting the sangat.`,
-            htmlBody: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#17345f"><div style="padding:18px 20px;background:linear-gradient(90deg,#004081,#0b67c2,#e58b16);color:#ffffff"><table role="presentation" cellspacing="0" cellpadding="0"><tr>${emailLogoSrc ? `<td style="padding-right:12px;vertical-align:middle"><img src="${escapeHtml(emailLogoSrc)}" alt="Singh Sabha Milton logo" width="48" height="48" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover" /></td>` : ''}<td style="vertical-align:middle"><h1 style="margin:0;font-size:22px">Langar Seva Confirmation</h1><p style="margin:4px 0 0;font-size:12px">Singh Sabha Milton</p></td></tr></table></div><div style="padding:20px"><h2 style="color:#0b4ea2">Langar commitments confirmed</h2><p>Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh</p><p>Dear Sangat Ji,</p><p>Thank you for your Langar seva. We recorded these commitments:</p><table style="border-collapse:collapse;width:100%;margin:20px 0"><thead><tr><th style="padding:9px;border:1px solid #dbe5f0;text-align:left">Item</th><th style="padding:9px;border:1px solid #dbe5f0;text-align:left">Quantity</th></tr></thead><tbody>${rows}</tbody></table><p>Thank you for supporting the sangat.</p></div></div>`
+            htmlBody: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#17345f"><div style="padding:18px 20px;background:linear-gradient(90deg,#004081,#0b67c2,#e58b16);color:#ffffff"><table role="presentation" cellspacing="0" cellpadding="0"><tr>${emailLogoSrc ? `<td style="padding-right:12px;vertical-align:middle"><img src="${escapeHtml(emailLogoSrc)}" alt="${escapeHtml(defaultOrganizationName)} logo" width="48" height="48" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover" /></td>` : ''}<td style="vertical-align:middle"><h1 style="margin:0;font-size:22px">Langar Seva Confirmation</h1><p style="margin:4px 0 0;font-size:12px">${escapeHtml(defaultOrganizationShortName)}</p></td></tr></table></div><div style="padding:20px"><h2 style="color:#0b4ea2">Langar commitments confirmed</h2><p>Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh</p><p>Dear Sangat Ji,</p><p>Thank you for your Langar seva. We recorded these commitments:</p><table style="border-collapse:collapse;width:100%;margin:20px 0"><thead><tr><th style="padding:9px;border:1px solid #dbe5f0;text-align:left">Item</th><th style="padding:9px;border:1px solid #dbe5f0;text-align:left">Quantity</th></tr></thead><tbody>${rows}</tbody></table><p>Thank you for supporting the sangat.</p></div></div>`
           });
         } catch (emailError) {
           console.warn('Langar batch confirmation email was not sent:', emailError.message || emailError);
@@ -8842,7 +8841,7 @@ const server = http.createServer(async (request, response) => {
           commonsUrl.searchParams.set('iiurlwidth', '500');
           commonsUrl.searchParams.set('format', 'json');
           const commonsResponse = await fetch(commonsUrl, {
-            headers: { 'User-Agent': 'SinghSabhaMilton/1.0 langar-image-search' }
+            headers: { 'User-Agent': 'GurdwaraCommunityPlatform/1.0 langar-image-search' }
           });
           const commonsData = commonsResponse.ok ? await commonsResponse.json() : null;
           imageUrls = Object.values(commonsData?.query?.pages || {})
@@ -9048,7 +9047,7 @@ const server = http.createServer(async (request, response) => {
             link: `${newsletterPublicBaseUrl || volunteerReminderBaseUrl || process.env.APP_URL || 'https://example.com'}/events`,
             whatsappNumber: process.env.WHATSAPP_GROUP_NUMBER || '',
             skipWhatsApp: true,
-            hashtags: ['SinghSabha', 'Community', 'Event']
+            hashtags: ['Gurdwara', 'Community', 'Event']
           }
         });
       }
@@ -10623,7 +10622,7 @@ const bootstrap = async () => {
   }
 
   server.listen(port, () => {
-    console.log(`Singh Sabha Milton server listening on http://127.0.0.1:${port}`);
+    console.log(`${defaultOrganizationName} server listening on http://127.0.0.1:${port}`);
     if (fs.existsSync(path.join(buildDir, 'index.html'))) {
       console.log(`Serving production frontend from ${buildDir}`);
     }

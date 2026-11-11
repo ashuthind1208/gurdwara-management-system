@@ -1,21 +1,21 @@
 {
-  "short_name": "Singh Sabha",
-  "name": "Singh Sabha Milton Gurdwara",
-  "description": "Events, seva, Hukamnama, and community updates from Singh Sabha Milton Gurdwara.",
+  "short_name": "Gurdwara",
+  "name": "Gurdwara Community Platform",
+  "description": "Gurdwara services, community programs, education, and donations.",
   "id": "/",
   "icons": [
     {
-      "src": "gurdwara-logo.webp",
-      "sizes": "320x320",
-      "type": "image/webp"
+      "src": "default-gurdwara.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     },
     {
-      "src": "logo192.png",
+      "src": "default-gurdwara.svg",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "default-gurdwara.svg",
       "type": "image/png",
       "sizes": "512x512"
     },
@@ -35,7 +35,7 @@
       "name": "Langar Needs",
       "short_name": "Langar",
       "url": "/?openLangar=1",
-      "icons": [{ "src": "logo192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "default-gurdwara.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ],
   "theme_color": "#0B4EA2",

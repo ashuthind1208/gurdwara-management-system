@@ -138,7 +138,7 @@ const HukamnamaPage = () => {
           {readAlongAudio?.url ? (
             <div className="w-full">
               <AudioPillPlayer
-                label="Singh Sabha Milton"
+                label="Gurdwara"
                 subtitle={`Ang ${currentAng} | ${hukamnamaDateLabel}`}
                 src={readAlongAudio.url}
                 showProgress

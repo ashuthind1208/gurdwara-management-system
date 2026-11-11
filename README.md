@@ -1,155 +1,90 @@
-# Singh Sabha Milton
+# Gurdwara Community Platform
 
-## Latest UX Updates (2026-07-18)
+A configurable, self-hosted web platform for Gurdwaras and Sikh community organizations. It brings public-facing services and staff tools into one application: events and bookings, seva and Langar, Hukamnama and Gurbani, donation campaigns, community announcements, newsletters, streaming, LED display playlists, and a visitor Welcome Journey.
 
-Recent member-facing improvements now included in the app:
+The project is intended as a reusable starting point—not a hosted multi-tenant SaaS. Each organization operates its own deployment and database, configures its own branding and integrations, and remains responsible for its own data and secrets.
 
-1. Event registration and donation flows show signed-in identity as compact text cards instead of editable-looking textboxes.
-2. Seva volunteer registration modal is smaller, more visual, and split into Personal Details and Registration Details sections.
-3. Event detail calendar action is now presented as a pill-style action with icon treatment.
-4. Global top-ribbon sign-in returns to Home, while page-specific gated sign-in links return users to the same page after login.
-5. Profile editing now supports app-specific avatar uploads while preserving the user email as non-editable and keeping the uploaded avatar from being overwritten on future Google sign-ins.
+## Why this project exists
 
-## Donation Recording via Stripe Webhooks
+Gurdwara information and services are often spread across separate forms, calendars, social pages, and spreadsheets. This platform offers one place for the sangat to find reliable information and participate, while giving administrators tools to manage content and displays. The modular design is intended to help another Gurdwara adapt the project without inheriting another organization's domain, account credentials, logo, or location details.
 
-This project now supports webhook-based Stripe donation recording so successful payments are saved even if a donor closes the browser after checkout.
+## Screenshots
 
-The Donations page supports campaign-managed Zeffy forms in an on-site iframe modal. Admins can select Zeffy when creating a campaign, provide its donation-form link and API key, and track verified donor names, emails, amounts, and raised totals in the shared donation ledger. API keys remain server-side. Zeffy `payment.completed` events are accepted at `POST /api/zeffy/webhook`, and periodic API reconciliation recovers missed webhook deliveries. See `PRODUCTION_DEPLOYMENT.md` for redirect and webhook setup.
+Screenshots are intentionally omitted for now: the historical captures contain a real tenant's branding and were moved to restricted local storage. Tenant-specific runbooks, decks, UAT materials, and production variables are also kept outside this repository; only reusable guides belong here. Add fresh screenshots after using demo branding and removing personal or member data. Suggested captures:
 
-### What was added
+- Public home page with demo organization name and logo
+- Admin widget/page-layout editor
+- Welcome Journey admin settings and public preview
+- LED board slideshow settings with per-slide durations
 
-1. Backend Checkout Session creation endpoint:
-	- `POST /api/stripe/create-checkout-session`
-	- Uses Stripe Checkout with `submit_type: donate` and `custom_unit_amount`.
-	- Stores donor/campaign details in Stripe `metadata`.
-2. Backend webhook endpoint:
-	- `POST /api/stripe/webhook`
-	- Verifies Stripe signature using `STRIPE_WEBHOOK_SECRET`.
-	- Persists `checkout.session.completed` records into `server/data/donations.json`.
-3. Backend donation read endpoints:
-	- `GET /api/donations`
-	- `GET /api/donations/summary`
-4. Frontend integration:
-	- Donation flow creates Stripe Checkout Sessions through backend.
-	- Admin donation list merges webhook records.
-	- Campaign totals include webhook-donation summaries.
+## Features
 
-### Environment variables required
+- Organization branding, logo, colors, fonts, and contact details
+- Public pages and CMS-managed pages with configurable content widgets
+- Events, registrations, bookings, seva opportunities, and Langar needs
+- Daily Hukamnama, Gurbani reader/search, Sikh learning resources, and recitations
+- Donation campaigns, Stripe checkout, QR flows, and receipts
+- Community notices, newsletter management, and optional notification integrations
+- LED display playlists, per-slide timing, and screen-specific configuration
+- Welcome Journey page and lobby display with optional, consent-based follow-up
+- PostgreSQL or MySQL persistence, file uploads, audit trails, and admin permissions
 
-Add these to `.env.local`:
+## Requirements
 
-1. `STRIPE_SECRET_KEY=sk_test_...` (or live key)
-2. `STRIPE_WEBHOOK_SECRET=whsec_...`
-3. `STRIPE_CURRENCY=cad` (optional, defaults to `cad`)
+- Node.js 20.x (see the `engines` field in `package.json`)
+- npm
+- A PostgreSQL or MySQL database for persistent, multi-user operation
+- Optional credentials for the services you enable (Google OAuth, Stripe, SMTP, Meta, AI, and others)
 
-### Stripe Dashboard setup
+## Quick start
 
-1. Go to Stripe Dashboard -> Developers -> Webhooks.
-2. Add endpoint URL:
-	- Local dev with Stripe CLI forwarding: `http://127.0.0.1:4242/api/stripe/webhook`
-	- Production: `https://your-domain/api/stripe/webhook`
-3. Subscribe to event:
-	- `checkout.session.completed`
-4. Copy Signing Secret into `STRIPE_WEBHOOK_SECRET`.
+1. Clone the repository and install dependencies with `npm ci`.
+2. Copy `.env.example` to `.env.local` and set your organization identity, contact details, public URL, OAuth configuration, and database connection.
+3. For a first administrator, set `BOOTSTRAP_ADMIN_EMAIL` to the Google account that should receive the initial Super Admin role. Remove the bootstrap setting after the account has been created and verified.
+4. Configure a PostgreSQL or MySQL database. Keep passwords and API secrets server-side; never put them in `REACT_APP_*` variables or commit them.
+5. Set your frontend build-time values in `.env.production` or `production-frontend.config`. The production build intentionally rejects missing configuration and unsafe values.
+6. Start development with `npm start`. The React development server runs on port 3001 and proxies API requests to the Node API on port 4242.
+7. Visit `/` for the public site and `/login` for administrator sign-in. Complete branding and content setup in the admin area before inviting your community.
 
-### Local testing flow
+The application needs a reachable database for saved content, accounts, and settings. Without one, some pages may show safe defaults, but changes will not persist.
 
-1. Start app:
-	- `npm start`
-2. In another terminal, forward Stripe webhooks to local backend:
-	- `stripe listen --forward-to 127.0.0.1:4242/api/stripe/webhook`
-3. Perform a test donation from the site.
-4. Verify:
-	- Donation appears in Admin -> Donations
-	- `server/data/donations.json` contains the webhook record
+## Configure a new Gurdwara
 
-### Scripts
+1. **Identity and branding:** set the organization name and public URL, then upload the organization's logo and configure its colors, address, phone, and email in the branding admin page.
+2. **Access:** configure Google OAuth redirect URLs for your domain and create the initial Super Admin using `BOOTSTRAP_ADMIN_EMAIL`. Verify sign-in and remove the bootstrap variable.
+3. **Database and uploads:** create a dedicated database and persistent upload directory. Back up both before upgrades.
+4. **Content:** replace demo CMS pages, events, schedules, Langar entries, member records, and any example media with content owned by your organization.
+5. **Integrations:** configure only the integrations you plan to use. For example, Stripe webhooks require the matching server-side secret and public HTTPS endpoint; email requires an SMTP provider.
+6. **LED screens:** create screen names/playlists, review each slide's duration, and test the board route on the target display device.
+7. **Privacy and operations:** review roles, consent text, retention, privacy notices, exports, backups, and access to member/donation data before going live.
 
-1. `npm start` starts both:
-	- Frontend (`react-scripts start`)
-	- Local Stripe helper API (`server/index.js`)
-2. `npm run build` builds the React app.
+## Configuration
 
-## Runtime Database (PostgreSQL or MySQL 8)
+Public build-time organization variables are listed in `.env.example` and `production-frontend.config`, including:
 
-Runtime data can use PostgreSQL or MySQL 8 through the same backend API. PostgreSQL remains the default and rollback option. See [docs/MYSQL_MIGRATION_RUNBOOK.md](docs/MYSQL_MIGRATION_RUNBOOK.md) for guarded migration, verification, cutover, and rollback commands.
+- `REACT_APP_ORGANIZATION_NAME` and `REACT_APP_ORGANIZATION_SHORT_NAME`
+- `REACT_APP_PUBLIC_SITE_URL` and `REACT_APP_SITE_DESCRIPTION`
+- `REACT_APP_CONTACT_PHONE`, `REACT_APP_CONTACT_EMAIL`, and `REACT_APP_CONTACT_ADDRESS`
+- `REACT_APP_YOUTUBE_URL`, `REACT_APP_FACEBOOK_URL`, and `REACT_APP_INSTAGRAM_URL`
+- `REACT_APP_GOOGLE_OAUTH_URL` and `REACT_APP_ADMIN_EMAILS`
 
-### 1. Create a PostgreSQL instance
+Server-side equivalents include `ORGANIZATION_NAME`, `ORGANIZATION_SHORT_NAME`, `ORGANIZATION_ADDRESS`, `ORGANIZATION_PHONE`, `ORGANIZATION_EMAIL`, `PUBLIC_SITE_URL`, and `ORGANIZATION_LOGO_PATH`. Keep database credentials, SMTP passwords, OAuth client secrets, payment secrets, webhook secrets, and API keys in the hosting provider's secret store or an ignored local environment file.
 
-Use any managed Postgres provider (Neon, Supabase, Railway, Render, RDS, etc.) and create:
+Feature-specific guides live under [docs](docs/). Start with [the production environment runbook](docs/BACKEND_PRODUCTION_ENV_RUNBOOK.md), [the multi-tenant architecture proposal](docs/MULTI_TENANT_ARCHITECTURE.md), and the relevant payment or notification setup guide before enabling those services.
 
-1. Database: `singhsabha_milton` (or your preferred name)
-2. User with read/write access
-3. Connection string
+## Useful commands
 
-### 2. Configure environment
+- `npm start` — local frontend and API development
+- `npm test -- --watchAll=false` — run the React test suite once
+- `npm run build` — validate and build the production frontend
+- `node --test server/*.test.js` — run Node.js server test files
 
-Set this in `.env.local` and in your deployment environment variables:
+## Deployment and data safety
 
-1. `DB_ENGINE=postgresql`
-1. `DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require`
+This application is self-hosted. Configure TLS, same-origin `/api` routing, a persistent database, and persistent upload storage before production use. Keep `server/data`, database backups, and uploads out of disposable build artifacts. Review [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) and the detailed runbooks in [docs](docs/).
 
-Optional (if you do not use `DATABASE_URL`):
+The current architecture uses one organization's configuration per deployment. The multi-tenant document is a proposal, not an implemented cross-tenant isolation guarantee. Do not place multiple Gurdwaras' private member, donation, or integration data in a shared deployment until tenant-scoped authentication, storage, permissions, and isolation tests are implemented.
 
-1. `DB_HOST`
-2. `DB_PORT`
-3. `DB_USER`
-4. `DB_PASSWORD`
-5. `DB_NAME`
-6. `DB_SSL=true`
+## License and contributions
 
-### 3. Automatic schema + seed
-
-On server start, the app will automatically:
-
-1. Create tables `events` and `event_registrants` if missing
-2. Seed starter events only if the table is empty
-
-### 4. Verify backend DB connection
-
-Call health endpoint:
-
-1. `GET /api/health`
-2. Confirm `eventsDatabaseConfigured: true`
-
-### 5. Verify cross-device persistence
-
-1. Add/update an event in Admin -> Events
-2. Open the app from another device/browser
-3. Confirm the same event appears on Events calendar
-
-## File Upload Storage (CMS, News, Events, Advertisements)
-
-Admins can now either paste a URL or upload a file for supported fields in:
-
-1. CMS
-2. News
-3. Events
-4. Advertisements
-
-Uploads are stored on disk (blob-style) under the backend folder structure:
-
-1. `server/uploads/cms/YYYY/MM/...`
-2. `server/uploads/news/YYYY/MM/...`
-3. `server/uploads/events/YYYY/MM/...`
-4. `server/uploads/advertisements/YYYY/MM/...`
-
-The app serves uploaded files from:
-
-1. `GET /api/uploads/<service>/<year>/<month>/<filename>`
-
-### Important deployment requirements
-
-1. Keep `server/uploads` on persistent storage (do not use ephemeral container filesystem for production).
-2. If deploying with Docker/Kubernetes, mount a persistent volume to `server/uploads`.
-3. If deploying to VM/bare-metal, include `server/uploads` in backup/restore plans.
-4. Ensure your reverse proxy (Nginx/Apache/platform router) forwards `/api/uploads/*` to the Node backend.
-5. Keep enough disk space and rotate old files as needed.
-
-### Push/deploy checklist for uploads
-
-1. Deploy application code as usual.
-2. Create or mount the `server/uploads` directory in the runtime environment.
-3. Verify upload endpoint works: `POST /api/uploads/cms`.
-4. Verify file access works: open returned `url` from upload response.
-5. If migrating environments, copy existing files from old `server/uploads` to the new storage before cutover.
+Check the repository's license and third-party asset notices before redistributing this project or its bundled media. Before contributing, run the focused tests for the area you changed, then the production build. Never commit production credentials, member exports, payment data, uploads, or browser/session storage.

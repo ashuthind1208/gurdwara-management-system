@@ -1,14 +1,14 @@
 const DEFAULT_WELCOME_JOURNEY_SETTINGS = Object.freeze({
   enabled: true,
-  titleEnglish: 'Welcome to Singh Sabha Milton',
-  titlePunjabi: 'ਸਿੰਘ ਸਭਾ ਮਿਲਟਨ ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ',
+  titleEnglish: 'Welcome to Your Gurdwara',
+  titlePunjabi: 'ਗੁਰਦੁਆਰਾ ਸਾਹਿਬ ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ',
   introEnglish: 'We are glad you are here. Scan this code for today’s program, langar, directions, and a way to stay connected.',
   introPunjabi: 'ਸਾਨੂੰ ਖੁਸ਼ੀ ਹੈ ਕਿ ਤੁਸੀਂ ਆਏ ਹੋ। ਅੱਜ ਦਾ ਪ੍ਰੋਗਰਾਮ, ਲੰਗਰ, ਰਸਤਾ ਅਤੇ ਸਾਡੇ ਨਾਲ ਜੁੜਨ ਲਈ ਇਹ ਕੋਡ ਸਕੈਨ ਕਰੋ।',
   scanHeadingEnglish: 'Your visit starts here',
   theme: 'navy',
-  locationName: 'Gurdwara Singh Sabha Milton',
-  address: '7035 Sixth Line, Milton, ON',
-  directionsUrl: 'https://maps.google.com/?q=7035+Sixth+Line+Milton+ON',
+  locationName: String(process.env.ORGANIZATION_NAME || 'Your Gurdwara').trim(),
+  address: '',
+  directionsUrl: '',
   directionsLabel: 'Get directions',
   programHeadingEnglish: 'Today’s program',
   programHeadingPunjabi: 'ਅੱਜ ਦਾ ਪ੍ਰੋਗਰਾਮ',
@@ -27,7 +27,7 @@ const DEFAULT_WELCOME_JOURNEY_SETTINGS = Object.freeze({
   showFollowUp: true,
   followUpHeadingEnglish: 'Would you like us to follow up?',
   followUpCopyEnglish: 'Leave your details only if you would like a member of our sangat team to contact you.',
-  followUpConsentEnglish: 'I agree to be contacted by Singh Sabha Milton about my visit.',
+  followUpConsentEnglish: 'I agree to be contacted by the Gurdwara about my visit.',
   followUpSuccessEnglish: 'Thank you. A member of our team will be in touch.'
 });
 const followUpRateBuckets = new Map();

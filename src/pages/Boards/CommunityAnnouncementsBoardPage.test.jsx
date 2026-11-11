@@ -6,7 +6,7 @@ import communityAnnouncementService from '../../services/communityAnnouncementSe
 
 jest.mock('../../services/communityAnnouncementService', () => ({ __esModule: true, default: { listPublic: jest.fn(), getCategories: jest.fn(), getBoardSettings: jest.fn() } }));
 jest.mock('../../hooks/useLedScreenHeartbeat', () => jest.fn());
-jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Gurdwara Singh Sabha Milton' }, logoSrc: '/logo.png' }) }));
+jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Example Gurdwara' }, logoSrc: '/logo.png' }) }));
 
 const notice = {
   id: 'notice-1', titleEnglish: 'Basement for rent', titlePunjabi: 'ਬੇਸਮੈਂਟ ਕਿਰਾਏ ਲਈ',

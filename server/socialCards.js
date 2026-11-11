@@ -26,7 +26,10 @@ const ensureFonts = () => {
 };
 
 const loadLogo = () => {
-  logoPromise ||= loadImage(path.join(ASSET_DIR, 'gurdwara-logo.webp')).catch(() => null);
+  const configuredLogoPath = String(process.env.ORGANIZATION_LOGO_PATH || '').trim();
+  logoPromise ||= configuredLogoPath && fs.existsSync(configuredLogoPath)
+    ? loadImage(configuredLogoPath).catch(() => null)
+    : Promise.resolve(null);
   return logoPromise;
 };
 
@@ -177,7 +180,7 @@ const drawPills = (ctx, labels, centerX, y) => {
 const toJpeg = (canvas) => canvas.toBuffer('image/jpeg', 92);
 
 // Daily Hukamnama card: the first lines of Gurbani with their English meaning, for Instagram and Facebook (4:5).
-const renderHukamnamaCard = async ({ lines = [], ang = '', raag = '', writer = '', dateLabel = '', organizationName = 'Gurdwara Singh Sabha Milton', websiteLabel = '' }) => {
+const renderHukamnamaCard = async ({ lines = [], ang = '', raag = '', writer = '', dateLabel = '', organizationName = process.env.ORGANIZATION_NAME || 'Your Gurdwara', websiteLabel = '' }) => {
   ensureFonts();
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext('2d');
@@ -223,7 +226,7 @@ const renderHukamnamaCard = async ({ lines = [], ang = '', raag = '', writer = '
 };
 
 // Event posters keep a plain gradient background so event photos cannot reduce text contrast.
-const renderEventPoster = async ({ title = '', whenDate = '', whenTime = '', where = '', description = '', organizationName = 'Gurdwara Singh Sabha Milton', websiteLabel = '' }) => {
+const renderEventPoster = async ({ title = '', whenDate = '', whenTime = '', where = '', description = '', organizationName = process.env.ORGANIZATION_NAME || 'Your Gurdwara', websiteLabel = '' }) => {
   ensureFonts();
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext('2d');

@@ -75,7 +75,7 @@ const QuickDonateBoardPage = () => {
     <main aria-label="Quick Donate LED board" className="flex min-h-screen w-full flex-col bg-gradient-to-br from-[#06152f] via-[#103b70] to-[#071a36] p-[clamp(20px,3vw,56px)] text-white">
       <header className="flex items-center gap-4 border-b border-white/20 pb-5">
         {logoSrc ? <img src={logoSrc} alt="" className="h-[clamp(56px,8vh,90px)] w-[clamp(56px,8vh,90px)] rounded-full border-2 border-amber-300 bg-white object-contain" /> : null}
-        <div><p className="text-[clamp(14px,1.3vw,22px)] font-bold uppercase tracking-widest text-amber-200">{branding?.organizationName || 'Singh Sabha Milton'}</p><h1 className="font-heading text-[clamp(30px,4vw,68px)] font-bold leading-tight">Give with your phone</h1></div>
+        <div><p className="text-[clamp(14px,1.3vw,22px)] font-bold uppercase tracking-widest text-amber-200">{branding?.organizationName || 'Your Gurdwara'}</p><h1 className="font-heading text-[clamp(30px,4vw,68px)] font-bold leading-tight">Give with your phone</h1></div>
       </header>
       {isPending || isConfigPending ? <p role="status" className="m-auto text-2xl">Loading donation campaign…</p> : isError || !campaign ? (
         <p role="alert" className="m-auto max-w-2xl text-center text-2xl">Donation campaign unavailable. Select an active campaign in Admin Donations → Quick Donate QR.</p>

@@ -7,7 +7,7 @@ import galleryService from '../../services/galleryService';
 import useSeoMeta from '../../hooks/useSeoMeta';
 import Seo from '../../components/common/Seo';
 import cmsService from '../../services/cmsService';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 
 const GalleryPage = () => {
   const meta = useSeoMeta('Gallery', 'Photo and video albums with searchable highlights.');

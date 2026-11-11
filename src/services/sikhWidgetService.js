@@ -3,7 +3,7 @@ import hukamnamaService from './hukamnamaService';
 import kidsQuizBankService from './kidsQuizBankService';
 
 export const HUKAMNAMA_URL = 'https://api.banidb.com/v2/hukamnamas';
-export const GURDWARA_OPTIONS = ['Sri Harmandir Sahib (BaniDB)', 'Singh Sabha Milton'];
+export const GURDWARA_OPTIONS = ['Sri Harmandir Sahib (BaniDB)', 'This Gurdwara'];
 export const BANI_IDS = Object.freeze({ 'Japji Sahib': 2, 'Rehras Sahib': 21, 'Kirtan Sohila': 23 });
 export const QUIZ_TOPICS = Object.freeze({
   'guru-nanak': '001_guru_nanak.json', 'ten-gurus': '002_ten_gurus.json',
@@ -141,10 +141,10 @@ const getContent = async (source, config = {}) => {
       ? entry.selectedShabadLines : entry?.selectedShabadId
         ? array(entry.lines).filter((item) => String(item?.shabadId) === String(entry.selectedShabadId)) : entry?.lines;
     return {
-      source, title: 'Singh Sabha Milton hukamnama', provenance: 'Singh Sabha Milton · locally scheduled daily hukamnama',
+      source, title: 'This Gurdwara hukamnama', provenance: 'This Gurdwara · locally scheduled daily Hukamnama',
       sourceDate: today, checkedAt, resources: [],
       lines: entry ? excerpt(array(selected).map((item) => line(item?.gurmukhi, item?.translationEnglish, item?.transliteration, entry.ang)), selection.limit) : [],
-      credits: [{ label: 'Singh Sabha Milton hukamnama', url: '/hukamnama' }]
+      credits: [{ label: 'Gurdwara hukamnama', url: '/hukamnama' }]
     };
   }
   if (source === 'hukamnama') {

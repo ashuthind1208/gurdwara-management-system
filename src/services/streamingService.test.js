@@ -3,9 +3,9 @@ jest.mock('./contentApiService', () => ({ __esModule: true, default: {} }));
 
 describe('streaming source selection', () => {
   test('recognizes actual YouTube domains only', () => {
-    expect(isYouTubeSource('@SinghSabhaMilton')).toBe(true);
-    expect(isYouTubeSource('Singh Sabha Milton')).toBe(true);
-    expect(isYouTubeSource('https://www.youtube.com/@SinghSabhaMilton')).toBe(true);
+    expect(isYouTubeSource('@ExampleGurdwara')).toBe(true);
+    expect(isYouTubeSource('Example Gurdwara')).toBe(true);
+    expect(isYouTubeSource('https://www.youtube.com/@ExampleGurdwara')).toBe(true);
     expect(isYouTubeSource('https://youtube.com.example.org/player')).toBe(false);
   });
   test('preserves custom player URL unchanged', async () => {
