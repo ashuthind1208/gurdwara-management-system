@@ -21,7 +21,7 @@ import newsService from '../../services/newsService';
 import useSeoMeta from '../../hooks/useSeoMeta';
 import Seo from '../../components/common/Seo';
 import NewsArticleDialog from '../../components/news/NewsArticleDialog';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 import { isEventCurrent } from '../../utils/eventAvailability';
 import { truncateHeading, truncateHtmlByCharacters } from '../../utils/newsContent';
 import LangarNeedsBoard from '../../components/langar/LangarNeedsBoardReference';

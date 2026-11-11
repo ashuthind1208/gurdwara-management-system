@@ -31,7 +31,7 @@ describe('StreamOverlayPage', () => {
     window.history.replaceState({}, '', '/stream-overlay?embed=1&lang=gpe');
     useRecitationLive.mockReturnValue({ session: { currentIndex: 0, status: 'live' }, connectionStatus: 'connected' });
     useRecitationText.mockReturnValue({ lines: [{ g: 'ਗੁਰਬਾਣੀ ਦੀ ਪੰਕਤੀ', p: 'ਪੰਜਾਬੀ ਅਰਥ', e: 'English meaning' }] });
-    useBranding.mockReturnValue({ branding: { organizationName: 'Gurdwara Singh Sabha Milton', shortName: 'Singh Sabha', primaryColor: '#0B4EA2', accentColor: '#F4A300', address: '7035, Sixth Line, Milton' }, logoSrc: '/logo.png' });
+    useBranding.mockReturnValue({ branding: { organizationName: 'Example Gurdwara', shortName: 'Example', primaryColor: '#0B4EA2', accentColor: '#F4A300', address: '123 Example Road' }, logoSrc: '/logo.png' });
   });
 
   test('loads published header, ticker and theme from the stable URL', async () => {
@@ -67,9 +67,8 @@ describe('StreamOverlayPage', () => {
     expect(screen.getByText('ਗੁਰਬਾਣੀ ਦੀ ਪੰਕਤੀ')).toBeInTheDocument();
     expect(screen.getByText('ਪੰਜਾਬੀ ਅਰਥ')).toBeInTheDocument();
     expect(screen.getByText('English meaning')).toBeInTheDocument();
-    expect(screen.getByText('Gurdwara Singh Sabha')).toBeInTheDocument();
-    expect(screen.queryByText('Gurdwara Singh Sabha Milton')).not.toBeInTheDocument();
-    expect(screen.getByText('7035, Sixth Line, Milton')).toBeInTheDocument();
+    expect(screen.getByText('Example Gurdwara')).toBeInTheDocument();
+    expect(screen.getByText('123 Example Road')).toBeInTheDocument();
     expect(screen.getByText(/\d{1,2}:\d{2}/)).toBeInTheDocument();
     expect(screen.queryByText('LIVE · SYNCED')).not.toBeInTheDocument();
     expect(screen.getByRole('banner', { name: 'Gurdwara broadcast header' })).toBeInTheDocument();

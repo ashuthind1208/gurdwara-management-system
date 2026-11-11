@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import gurdwaraLogo from '../assets/gurdwara-logo.webp';
 
 const LOGO_BLUE_RGB = [0, 64, 129];
 
@@ -34,25 +33,7 @@ export const downloadCsv = ({ fileName, headers, rows }) => {
   triggerFileDownload(blob, fileName || 'export.csv');
 };
 
-const toDataUrl = (blob) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onloadend = () => resolve(reader.result);
-  reader.onerror = reject;
-  reader.readAsDataURL(blob);
-});
-
-const loadLogoDataUrl = async () => {
-  try {
-    const response = await fetch(gurdwaraLogo);
-    if (!response.ok) {
-      return '';
-    }
-    const blob = await response.blob();
-    return await toDataUrl(blob);
-  } catch {
-    return '';
-  }
-};
+const loadLogoDataUrl = async () => '';
 
 export const downloadRegistrationCsv = ({
   fileName,
@@ -270,7 +251,7 @@ export const createBulkDonationStatementPdfBlob = async ({
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text(organizationName || 'Singh Sabha Milton Gurdwara', 112, 40);
+  doc.text(organizationName || 'Your Gurdwara', 112, 40);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.text(address || '', 112, 59, { maxWidth: 330 });
@@ -373,7 +354,7 @@ export const createBookingReceiptPdfBlob = async ({
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text(organizationName || 'Singh Sabha Milton Gurdwara', 112, 42);
+  doc.text(organizationName || 'Your Gurdwara', 112, 42);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.text(address || '', 112, 60);
@@ -503,7 +484,7 @@ export const createMembershipFeeInformationPdfBlob = async ({ user = {}, members
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(organizationName || 'Singh Sabha Milton Gurdwara', 112, 43);
+  doc.text(organizationName || 'Your Gurdwara', 112, 43);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.text(address || '', 112, 61);
@@ -525,7 +506,7 @@ export const createMembershipFeeInformationPdfBlob = async ({ user = {}, members
   doc.setTextColor(51, 65, 85);
   const welcomeText = feeRecord
     ? `This document summarizes your membership profile and ${selectedFeeRecord ? 'the selected' : 'the latest'} fee transaction recorded on your account.`
-    : 'Your registration has been approved. A current paid membership fee activates Member access and helps support programs, services, and community work at Singh Sabha Milton.';
+    : 'Your registration has been approved. A current paid membership fee activates Member access and helps support programs, services, and community work at your Gurdwara.';
   doc.text(welcomeText, 40, 171, { maxWidth: pageWidth - 80, lineHeightFactor: 1.45 });
 
   const statusY = 220;
@@ -665,7 +646,7 @@ const BOOKING_REVENUE_HEADERS = [
 export const downloadBookingRevenueCsv = ({ fileName, organizationName, bookings = [], startDate, endDate, categoryName, totalRevenue = 0 }) => {
   const rows = getBookingRevenueReportRows(bookings);
   const metadataRows = [
-    ['Organization', organizationName || 'Singh Sabha Milton Gurdwara'],
+    ['Organization', organizationName || 'Your Gurdwara'],
     ['Report', 'Booking Revenue'],
     ['Created Date Range', `${startDate || '-'} to ${endDate || '-'}`],
     ['Occasion Type', categoryName || 'All booking types'],
@@ -696,7 +677,7 @@ export const createBookingRevenuePdfBlob = async ({ organizationName, bookings =
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text(organizationName || 'Singh Sabha Milton Gurdwara', 106, 39);
+  doc.text(organizationName || 'Your Gurdwara', 106, 39);
   doc.setFontSize(15);
   doc.text('Booking Revenue Report', 106, 64);
   doc.setFont('helvetica', 'normal');

@@ -88,7 +88,7 @@ const defaultLibraryData = {
       audience: 'Teens and Adults',
       scheduleDate: '2026-07-21',
       scheduleTime: '6:30 PM',
-      location: 'Library Hall, Singh Sabha Milton',
+      location: 'Gurdwara Library',
       summary: 'Interactive reading and Q&A on Sikh history sources and storytelling methods.',
       registrationUrl: '/events',
       updatedAt: new Date().toISOString()
@@ -276,7 +276,7 @@ const toLinkedEventPayload = (entry) => {
     description: String(entry.summary || '').trim(),
     date: startIso,
     endDate: endIso,
-    location: String(entry.location || 'Library Hall, Singh Sabha Milton').trim(),
+    location: String(entry.location || 'Library Hall').trim(),
     category: 'Workshop',
     mediaUrl: String(entry.imageUrl || '').trim(),
     registrations: 0,

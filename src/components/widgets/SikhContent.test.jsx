@@ -70,7 +70,7 @@ test('all source and configuration changes have distinct query keys and no previ
   const { update, client } = mount({ config: { gurdwara: 'Sri Harmandir Sahib (BaniDB)', limit: 1 } });
   await screen.findByText('True Name');
   for (const props of [
-    { widget: widget(), config: { gurdwara: 'Singh Sabha Milton', limit: 1 } },
+    { widget: widget(), config: { gurdwara: 'Example Gurdwara', limit: 1 } },
     { widget: widget('gurbani-ang'), config: { ang: 1, limit: 1 } },
     { widget: widget('gurbani-ang'), config: { ang: 2, limit: 1 } },
     { widget: widget('nitnem-reader'), config: { bani: 'Japji Sahib', limit: 1 } },

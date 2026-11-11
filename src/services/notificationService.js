@@ -161,7 +161,7 @@ const toNewsletterLogoUrl = () => {
   }
 
   if (typeof window !== 'undefined' && window?.location?.origin) {
-    return `${window.location.origin}/gurdwara-logo.webp`;
+    return `${window.location.origin}/default-gurdwara.svg`;
   }
 
   return '';
@@ -369,7 +369,7 @@ const normalizeNewsletterBodyHtmlForEmail = (html = '') => {
 const buildNewsletterEmailHtml = (campaign = {}) => {
   const logoUrl = toNewsletterLogoUrl();
   const topic = normalizeTopicName(campaign.topic || '') || 'Newsletter Update';
-  const title = String(campaign.title || 'Singh Sabha Milton Newsletter').trim();
+  const title = String(campaign.title || `${siteConfig.shortName || 'Your Gurdwara'} Newsletter`).trim();
   const contentHtml = normalizeNewsletterBodyHtmlForEmail(String(campaign.bodyHtml || '').trim())
     || `<p>${escapeHtml(String(campaign.body || '').trim())}</p>`;
 
@@ -383,9 +383,9 @@ const buildNewsletterEmailHtml = (campaign = {}) => {
               <td style="vertical-align:middle;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr>
-                    ${logoUrl ? `<td style="width:44px;padding-right:12px;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="Singh Sabha Milton logo" width="44" height="44" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover;"/></td>` : ''}
+                    ${logoUrl ? `<td style="width:44px;padding-right:12px;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(siteConfig.shortName || 'Gurdwara')} logo" width="44" height="44" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover;"/></td>` : ''}
                     <td style="vertical-align:middle;">
-                      <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">Singh Sabha Milton</div>
+                      <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">${escapeHtml(siteConfig.shortName || 'Your Gurdwara')}</div>
                       <div style="font-size:18px;font-weight:800;line-height:1.3;margin-top:2px;">Newsletter Bulletin</div>
                     </td>
                   </tr>
@@ -437,7 +437,7 @@ const toPublicBaseUrl = () => {
     return String(window.location.origin).replace(/\/+$/, '');
   }
 
-  return 'https://singhsabhamilton.com';
+  return 'https://example.org';
 };
 
 const buildApprovalEmailHtml = (user = {}) => {
@@ -466,9 +466,9 @@ const buildApprovalEmailHtml = (user = {}) => {
               <td style="vertical-align:middle;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr>
-                    ${logoUrl ? `<td style="width:44px;padding-right:12px;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="Singh Sabha Milton logo" width="44" height="44" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover;"/></td>` : ''}
+                    ${logoUrl ? `<td style="width:44px;padding-right:12px;vertical-align:middle;"><img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(siteConfig.shortName || 'Gurdwara')} logo" width="44" height="44" style="display:block;border-radius:9999px;background:#ffffff;object-fit:cover;"/></td>` : ''}
                     <td style="vertical-align:middle;">
-                      <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">Singh Sabha Milton</div>
+                      <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">${escapeHtml(siteConfig.shortName || 'Your Gurdwara')}</div>
                       <div style="font-size:18px;font-weight:800;line-height:1.3;margin-top:2px;">Registration Approved</div>
                     </td>
                   </tr>
@@ -513,7 +513,7 @@ const buildApprovalEmailHtml = (user = {}) => {
             ${supportPhone ? `<div>Phone: <a href="tel:${supportPhone.replace(/\s+/g, '')}" style="color:#0b67c2;text-decoration:none;">${supportPhone}</a></div>` : ''}
             ${supportAddress ? `<div>Address: ${supportAddress}</div>` : ''}
             <div>Contact Page: <a href="${safeContactUrl}" style="color:#0b67c2;text-decoration:none;">${safeContactUrl}</a></div>
-            <div style="margin-top:8px;">${escapeHtml(siteConfig.shortName || 'Singh Sabha Milton')} | ${safeBaseUrl}</div>
+            <div style="margin-top:8px;">${escapeHtml(siteConfig.shortName || 'Your Gurdwara')} | ${safeBaseUrl}</div>
           </div>
         </td>
       </tr>
@@ -799,7 +799,7 @@ const notificationService = {
           bccList: recipients,
           bccRecipients: recipients,
           title: campaign.title,
-          subject: campaign.subject || campaign.title || 'Singh Sabha Milton Newsletter',
+          subject: campaign.subject || campaign.title || `${siteConfig.shortName || 'Your Gurdwara'} Newsletter`,
           body: preparedEmail.html,
           html: preparedEmail.html,
           message: preparedEmail.html,

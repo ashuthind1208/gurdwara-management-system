@@ -83,7 +83,7 @@ const createDonationSms = ({ db, env = process.env, fetchImpl = fetch, logger = 
       throw error;
     }
     try {
-      const organization = String(env.SMS_ORGANIZATION_NAME || 'Singh Sabha Milton');
+      const organization = String(env.SMS_ORGANIZATION_NAME || env.ORGANIZATION_NAME || 'Your Gurdwara');
       const amount = Number(donation.amount).toFixed(2);
       const donorName = String(donation.donorName || '').replace(/\s+/g, ' ').trim();
       const campaignName = String(donation.campaignName || '').replace(/\s+/g, ' ').trim();

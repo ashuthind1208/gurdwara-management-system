@@ -12,6 +12,8 @@
 /build
 /server/uploads/
 /server/data/vapid-keys.json
+/server/data/users.json
+/docs/prod_variables
 /*.zip
 /*.tar.gz
 

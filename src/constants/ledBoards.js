@@ -47,6 +47,13 @@ export const WELCOME_MAX_SECONDS = 300;
 export const DEFAULT_WELCOME_SECONDS = 30;
 export const WELCOME_PRESETS = [30, 45, 60];
 
+export const getSlideDurationSeconds = (settings, boardKey) => {
+  const configured = Number(settings?.slideDurations?.[boardKey]);
+  if (Number.isInteger(configured) && configured > 0) return configured;
+  if (boardKey === 'hukamnama') return settings?.hukamnamaSeconds || DEFAULT_HUKAMNAMA_SECONDS;
+  return settings?.intervalSeconds || DEFAULT_INTERVAL_SECONDS;
+};
+
 export const toEmbedSrc = (board) => {
   const url = new URL(board.path, window.location.origin);
   url.searchParams.set('embed', '1');
@@ -63,8 +70,8 @@ export const buildLedSlides = (settings, { liveAnnouncements = [], hasHukamnama 
   const slides = orderedBoards
   .filter((board) => settings.enabled[board.key] && (board.key !== 'hukamnama' || hasHukamnama) && (board.key !== 'welcome' || welcomeJourneyEnabled))
   .flatMap((board) => (board.isAnnouncementBoard
-    ? liveAnnouncements.map((announcement) => ({ key: `announcement:${announcement.id}`, kind: 'announcement', label: `Special Event · ${announcement.title || 'Announcement'}`, announcement, durationSeconds: settings.intervalSeconds }))
-    : [{ key: `board:${board.key}`, kind: 'board', label: board.title, src: toEmbedSrc(board), durationSeconds: board.key === 'hukamnama' ? (settings.hukamnamaSeconds || DEFAULT_HUKAMNAMA_SECONDS) : board.key === 'welcome' ? (settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS) : settings.intervalSeconds } ]));
+    ? liveAnnouncements.map((announcement) => ({ key: `announcement:${announcement.id}`, kind: 'announcement', label: `Special Event · ${announcement.title || 'Announcement'}`, announcement, durationSeconds: getSlideDurationSeconds(settings, board.key) }))
+    : [{ key: `board:${board.key}`, kind: 'board', label: board.title, src: toEmbedSrc(board), durationSeconds: getSlideDurationSeconds(settings, board.key) } ]));
   if (settings.festivalBannersEnabled !== false) slides.push(...festivalSlides);
   return slides;
 };

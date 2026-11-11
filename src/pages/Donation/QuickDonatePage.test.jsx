@@ -25,7 +25,7 @@ jest.mock('../../services/donationService', () => ({ __esModule: true, default: 
   verifyQuickDonation: jest.fn(),
   createQuickDonatePaymentIntent: jest.fn()
 } }));
-jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Singh Sabha Milton' }, logoSrc: '/logo.png' }) }));
+jest.mock('../../context/BrandingContext', () => ({ useBranding: () => ({ branding: { organizationName: 'Example Gurdwara' }, logoSrc: '/logo.png' }) }));
 jest.mock('../../layouts/PublicLayout', () => () => { throw new Error('Public layout must not mount'); });
 jest.mock('../../layouts/AdminLayout', () => () => { throw new Error('Admin layout must not mount'); });
 jest.mock('../../routes/ProtectedRoute', () => () => { throw new Error('Authentication must not mount'); });
@@ -59,7 +59,7 @@ test('offers branded anonymous CAD presets and direct Apple Pay and Google Pay b
   expect(screen.getByRole('button', { name: 'Google Pay' })).toBeInTheDocument();
   expect(screen.getByTestId('stripe-wallet-layout')).toHaveAttribute('data-columns', '2');
   expect(screen.getByTestId('stripe-wallet-layout')).toHaveAttribute('data-rows', '1');
-  expect(screen.getByAltText('Singh Sabha Milton logo')).toHaveAttribute('src', '/logo.png');
+  expect(screen.getByAltText('Example Gurdwara logo')).toHaveAttribute('src', '/logo.png');
   expect(screen.getAllByRole('button')).toHaveLength(7);
   expect(screen.getByRole('textbox', { name: 'Custom donation amount in CAD' })).toBeInTheDocument();
   for (const amount of [5, 10, 20, 50, 100]) {

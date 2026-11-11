@@ -6,6 +6,7 @@ import Seo from '../../components/common/Seo';
 import Card from '../../components/ui/Card';
 import useSeoMeta from '../../hooks/useSeoMeta';
 import videoService, { CATEGORIES, getYouTubeEmbedUrl, getYouTubeThumbnail, getFacebookEmbedUrl } from '../../services/videoService';
+import { siteConfig } from '../../constants/siteConfig';
 
 const PAGE_SIZE = 9;
 
@@ -31,7 +32,7 @@ const startPlaybackWithVolume = (iframe, volume = 50) => {
 };
 
 const VideosPage = () => {
-  const meta = useSeoMeta('Gurdwara Videos', 'Watch recordings of samagams, kirtan, katha, and special events at Singh Sabha Milton.');
+  const meta = useSeoMeta('Gurdwara Videos', `Watch recordings of samagams, kirtan, katha, and special events at ${siteConfig.name}.`);
   const [activeCategory, setActiveCategory] = useState('All');
   const [page, setPage] = useState(1);
   const [activeVideo, setActiveVideo] = useState(null);
@@ -84,7 +85,7 @@ const VideosPage = () => {
       <Seo {...meta} />
       <PageHero
         title="Gurdwara Videos"
-        description="Watch recordings of Sunday samagams, kirtan, katha, and special events at Singh Sabha Milton."
+        description={`Watch recordings of Sunday samagams, kirtan, katha, and special events at ${siteConfig.name}.`}
       />
 
       {featured.length > 0 ? (

@@ -113,7 +113,7 @@ const createSocialPostingService = ({
   uploadsDir,
   publicBaseUrl = '',
   timeZone = 'America/Toronto',
-  organizationName = 'Gurdwara Singh Sabha Milton',
+  organizationName = process.env.ORGANIZATION_NAME || 'Your Gurdwara',
   env = process.env,
   http = axios,
   logger = console,

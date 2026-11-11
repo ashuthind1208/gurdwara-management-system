@@ -15,7 +15,7 @@ Findings from the current code that shape the design:
 | Roles | Global strings: `admin`, `super admin`, etc. (`canManageDonations`, `isSuperAdmin`) | Roles must be scoped per tenant, with a separate platform-level role |
 | Integrations | Env vars: one Meta token, one Stripe key, one SMTP, one OpenWA group, one `PUBLIC_SITE_URL` | Per-tenant encrypted credentials |
 | Uploads | One `uploads/` tree | Per-tenant prefix and quotas |
-| Public site | Single domain `singhsabhamilton.com` | Needs domain/subdomain to tenant resolution |
+| Public site | One configured public domain per deployment | Needs domain/subdomain to tenant resolution |
 | Schedulers | Global timers (reminders, social sweep) | Must iterate tenants with isolation |
 
 ## 2. Recommended model
@@ -98,9 +98,9 @@ Custom domains need: DNS verification record, automatic TLS (Hostinger or a prox
 
 ## 6. Data migration plan
 
-Existing data becomes tenant #1 (Singh Sabha Milton) with no behaviour change.
+Existing data becomes the first tenant with no behaviour change.
 
-1. Create the new tables and insert tenant `singhsabha-milton`.
+1. Create the new tables and insert the initial tenant with a deployment-specific slug.
 2. Add `tenant_id` columns as nullable, backfill with tenant #1, then set `NOT NULL` and add indexes.
 3. For `app_items` and `app_singletons`, change the key from `resource` to `(tenant_id, resource)`.
 4. Move the current env-based credentials into `tenant_secrets` for tenant #1; keep env fallback for one release.

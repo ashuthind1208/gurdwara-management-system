@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   const completeRegistration = useCallback(async (payload) => {
     setLoading(true);
     try {
-      const response = await authService.completeRegistration(payload || {});
+      const response = await authService.completeRegistration({ ...(payload || {}), googleAccessToken: token });
       persistUser(response.data.user);
       if (response.data.token) {
         setToken(response.data.token);
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [persistUser]);
+  }, [persistUser, token]);
 
   const updateProfile = useCallback(async (payload) => {
     if (!user?.id) {

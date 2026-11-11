@@ -335,7 +335,7 @@ const defaultPageContent = {
   membership: {
     heroTitle: 'Membership Registration',
     heroDescription: 'Membership registration information and disclaimer.',
-    intro: '<p>To become a lifetime member of Gurdwara Singh Sabha Milton (GSSM), please complete the form below. An initiation fee of $500 is due upon signup. Going forward, membership will need to be renewed as of January 1st of the following year, at a cost of $50 per month to maintain your membership in good standing. After completing 10 years of $50 monthly donations, your membership will become permanent at no cost.</p>',
+    intro: '',
     mediaUrl: '',
     sections: []
   },
@@ -353,8 +353,8 @@ const defaultPageContent = {
       { label: 'Office Support', value: 'Mon-Sun: 10:00 AM to 6:00 PM' }
     ],
     socialLinks: {
-      facebook: 'https://facebook.com/singhsabhamilton',
-      instagram: 'https://www.instagram.com/miltongurdwara/'
+      facebook: '',
+      instagram: ''
     },
     sections: []
   }
@@ -514,9 +514,9 @@ const persistPageContent = async (nextValue) => {
 const defaultContent = {
   hero: {
     eyebrow: 'Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh',
-    title: 'Gurdwara Singh Sabha Milton',
+    title: 'Your Gurdwara',
     description:
-      'Daily hukamnama, Sunday samagams, seva opportunities, and community updates for the sangat in Milton and beyond.',
+      'Daily hukamnama, samagams, seva opportunities, and community updates for your sangat.',
     slideIntervalSeconds: DEFAULT_HERO_SLIDE_INTERVAL_SECONDS,
     primaryCta: 'Donate for Langar',
     primaryCtaPath: '/donation',

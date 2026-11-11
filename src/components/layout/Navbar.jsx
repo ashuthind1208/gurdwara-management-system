@@ -56,7 +56,7 @@ import ZeffyDonationModal from '../../pages/Donation/ZeffyDonationModal';
 import LangarNeedsBoard from '../langar/LangarNeedsBoardReference';
 import langarService, { LANGAR_CONTRIBUTIONS_RESOURCE } from '../../services/langarService';
 
-const MEMBERSHIP_ZEFFY_URL = 'https://www.zeffy.com/en-CA/ticketing/gurdwara-singh-sabha-milton-membership';
+const MEMBERSHIP_ZEFFY_URL = String(process.env.REACT_APP_MEMBERSHIP_ZEFFY_URL || '').trim();
 
 const FacebookIcon = ({ className = 'h-4 w-4' }) => <svg viewBox="0 0 24 24" className={className} aria-hidden="true"><path fill="currentColor" d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.2V11H7.3v3h2.8v8h3.4Z" /></svg>;
 const InstagramIcon = ({ className = 'h-4 w-4' }) => <svg viewBox="0 0 24 24" className={className} aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Z" /><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" strokeWidth="2" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" /></svg>;
@@ -578,7 +578,7 @@ const Navbar = () => {
       .map((event) => {
         const date = toDateKey(event.date);
         const time = formatTime(event.date);
-        const locationLabel = String(event.location || 'Gurdwara Singh Sabha Milton').trim();
+        const locationLabel = String(event.location || branding.organizationName || siteConfig.name).trim();
         return {
           id: `community-event-${event.id}`,
           date,
@@ -602,7 +602,7 @@ const Navbar = () => {
       .map((booking) => {
         const title = String(booking.title || booking.categoryName || 'Gurdwara Booking').trim();
         const time = formatBookingTime(booking.startTime);
-        const locationLabel = String(booking.bookingLocation || 'Gurdwara Singh Sabha Milton').trim();
+        const locationLabel = String(booking.bookingLocation || branding.organizationName || siteConfig.name).trim();
         return {
           id: `confirmed-booking-${booking.id}`,
           date: String(booking.date),
@@ -623,7 +623,7 @@ const Navbar = () => {
 
     const calendarObservances = mergeNanakshahiObservances(nanakshahiObservances, getFallbackNanakshahiObservances());
     return [...calendarObservances, ...eventObservances, ...bookingObservances];
-  }, [nanakshahiObservances, publicCalendarBookings, publicCalendarEvents]);
+  }, [branding.organizationName, nanakshahiObservances, publicCalendarBookings, publicCalendarEvents]);
   const nanakshahiMonthCalendar = useMemo(
     () => getNanakshahiMonthCalendar(calendarViewDate, combinedNanakshahiObservances),
     [calendarViewDate, combinedNanakshahiObservances]
@@ -974,19 +974,10 @@ const Navbar = () => {
     () => streamingItems.filter((entry) => entry?.streamUrl && entry?.active),
     [streamingItems]
   );
-  const miltonPrimaryStream = useMemo(() => {
-    if (liveStreams.length === 0) {
-      return null;
-    }
-
-    return liveStreams.find((stream) => {
-      const haystack = `${stream?.title || ''} ${stream?.text || ''} ${stream?.streamUrl || ''}`.toLowerCase();
-      return haystack.includes('milton') || haystack.includes('singh sabha');
-    }) || null;
-  }, [liveStreams]);
+  const primaryGurdwaraStream = useMemo(() => liveStreams.find((stream) => stream?.isPrimary === true) || liveStreams[0] || null, [liveStreams]);
   const secondaryLiveStreams = useMemo(
-    () => liveStreams.filter((stream) => stream.id !== miltonPrimaryStream?.id),
-    [liveStreams, miltonPrimaryStream?.id]
+    () => liveStreams.filter((stream) => stream.id !== primaryGurdwaraStream?.id),
+    [liveStreams, primaryGurdwaraStream?.id]
   );
   const todayObservance = useMemo(
     () => upcomingObservances.find((entry) => entry.date === todayIso) || null,
@@ -1774,7 +1765,7 @@ const Navbar = () => {
   };
 
   const statusDotClass = isKirtanPlaying ? 'bg-emerald-400' : (isKirtanLoading ? 'bg-amber-300' : 'bg-red-400');
-  const featuredStream = miltonPrimaryStream || liveStreams[0] || null;
+  const featuredStream = primaryGurdwaraStream;
   const isHomeOverlayMode = isHomePage && !isCompact;
   const whatsAppJoinLink = String(phase2ChannelsConfig?.whatsAppJoinLink || '').trim();
   const hasWhatsAppGroup = phase2ChannelsConfig?.whatsAppOptInEnabled === true && /^https?:\/\//i.test(whatsAppJoinLink);
@@ -3033,15 +3024,15 @@ const Navbar = () => {
         <div className="min-h-0 overflow-hidden">
           <div className={`border-b-2 ${isHomeOverlayMode ? 'border-transparent bg-transparent' : 'border-brand-blue/45 bg-slate-900/92'} pb-5 pt-1`}>
             <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 md:px-6">
-              {miltonPrimaryStream ? (
+              {primaryGurdwaraStream ? (
                 <div className="flex justify-center pt-0.5 pb-3">
                   <button
                     type="button"
-                    onClick={() => openStreamModal(miltonPrimaryStream.id)}
+                    onClick={() => openStreamModal(primaryGurdwaraStream.id)}
                     className="inline-flex items-center gap-2 rounded-full border-2 border-brand-saffron bg-brand-blue px-6 py-2 text-xs font-extrabold uppercase tracking-wider text-white shadow-[0_10px_28px_rgba(10,77,159,0.45)] transition hover:-translate-y-0.5 hover:bg-blue-700 [animation:pulse_2.1s_ease-in-out_infinite]"
                   >
                     <span className="inline-flex h-2.5 w-2.5 rounded-full bg-brand-saffron" />
-                    Milton Gurdwara Live Stream
+                    Live Gurdwara Stream
                   </button>
                 </div>
               ) : null}
@@ -3109,17 +3100,17 @@ const Navbar = () => {
                 />
               </div>
               <ul className="max-h-[60vh] overflow-y-auto px-2 py-2">
-                {miltonPrimaryStream ? (
+                {primaryGurdwaraStream ? (
                   <li className="px-1 pb-2">
                     <button
                       type="button"
                       onClick={() => {
                         setCompactStreamsOpen(false);
-                        openStreamModal(miltonPrimaryStream.id);
+                        openStreamModal(primaryGurdwaraStream.id);
                       }}
                       className="flex w-full items-center justify-between rounded-lg border border-brand-blue/20 bg-blue-50 px-3 py-2 text-left"
                     >
-                      <span className="text-sm font-extrabold uppercase tracking-wide text-brand-blue">Milton Gurdwara Live Stream</span>
+                      <span className="text-sm font-extrabold uppercase tracking-wide text-brand-blue">Live Gurdwara Stream</span>
                       <span className="inline-flex shrink-0 rounded-full bg-brand-blue px-2 py-0.5 text-[11px] font-semibold text-white">Watch</span>
                     </button>
                   </li>
@@ -3540,7 +3531,7 @@ const Navbar = () => {
                 <label className="lg:col-span-2 inline-flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
                   <input type="checkbox" checked={membershipForm.membershipPledgeAccepted} onChange={handleMembershipFieldChange('membershipPledgeAccepted')} className="mt-1" />
                   <span>
-                    I hereby pledge that upon becoming a member of Gurdwara Singh Sabha Milton, I will wholeheartedly commit myself to upholding the rules and regulations set forth by the Executive Committee of Gurdwara Singh Sabha Milton.
+                    I hereby pledge that upon becoming a member of {branding.organizationName || siteConfig.name}, I will wholeheartedly commit myself to upholding the rules and regulations set forth by the Executive Committee of {branding.organizationName || siteConfig.name}.
                   </span>
                 </label>
 

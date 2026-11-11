@@ -6,7 +6,7 @@ import { ArchiveBoxIcon, CalendarDaysIcon, ChevronRightIcon, GiftIcon, MinusIcon
 import { useAuth } from '../../context/AuthContext';
 import langarService, { LANGAR_CONTRIBUTIONS_RESOURCE } from '../../services/langarService';
 import instacartService from '../../services/instacartService';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 
 const HEADER_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1800&q=88';
 const ANONYMOUS_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"%3E%3Crect width="80" height="80" rx="40" fill="%23dbeafe"/%3E%3Ccircle cx="40" cy="29" r="13" fill="%230f3b75"/%3E%3Cpath d="M17 68c2-15 12-23 23-23s21 8 23 23" fill="%230f3b75"/%3E%3C/svg%3E';

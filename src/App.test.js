@@ -21,6 +21,6 @@ test('renders the public navbar branding', async () => {
       </QueryClientProvider>
     </HelmetProvider>
   );
-  const logos = await screen.findAllByAltText(/gurdwara singh sabha milton logo/i);
+  const logos = await screen.findAllByAltText(/gurdwara logo/i);
   expect(logos.length).toBeGreaterThan(0);
 });

@@ -108,7 +108,7 @@ const ContactPage = () => {
 
     setIsSendingContactMessage(true);
     try {
-      const siteName = String(siteConfig?.orgName || 'Singh Sabha Milton Gurdwara').trim();
+      const siteName = String(siteConfig.name || 'Your Gurdwara').trim();
       const logoUrl = String(process.env.REACT_APP_NEWSLETTER_LOGO_URL || '').trim();
       const recipientEmail = String(email || '').trim();
       const subject = `Contact Us Inquiry from ${String(values?.name || 'Visitor').trim()}`;
@@ -188,7 +188,7 @@ const ContactPage = () => {
     }
   };
 
-  const address = content?.address || siteConfig.contact.address || '7035 Sixth Line, Milton ON';
+  const address = content?.address || siteConfig.contact.address || '';
   const phone = content?.phone || siteConfig.contact.phone;
   const email = content?.email || siteConfig.contact.email;
   const normalizedPhone = String(phone || '').replace(/[^\d+]/g, '');

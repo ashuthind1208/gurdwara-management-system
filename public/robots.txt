@@ -2,4 +2,4 @@ User-agent: *
 Disallow:
 Allow: /
 
-Sitemap: https://www.singhsabhamilton.org/sitemap.xml
+Sitemap: /sitemap.xml

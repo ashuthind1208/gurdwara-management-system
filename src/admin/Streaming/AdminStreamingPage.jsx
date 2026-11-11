@@ -340,7 +340,7 @@ const AdminStreamingPage = () => {
                 </label>
                 <label className="text-sm font-semibold text-slate-700 md:col-span-2">
                   YouTube channel or custom public player URL
-                  <input {...form.register('streamUrl', { required: true, validate: validateStreamingSource })} placeholder="@SinghSabhaMilton or https://provider.example/live/player" required className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <input {...form.register('streamUrl', { required: true, validate: validateStreamingSource })} placeholder="@yourchannel or https://provider.example/live/player" required className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                 </label>
                 {form.formState.errors.streamUrl ? <p role="alert" className="text-sm text-red-700 md:col-span-2">{form.formState.errors.streamUrl.message || 'Enter a streaming source.'}</p> : null}
                 <p className="-mt-1 text-xs text-slate-500 md:col-span-2">YouTube: enter a channel name, @handle, or channel URL to resolve its current live broadcast. Streamlabs/OBS or another broadcaster: enter your destination's public viewing/embed URL (for example YouTube or another hosting provider). The homepage Live button uses this source. Do not enter RTMP ingest URLs, stream keys, or the text-only Streamlabs overlay URL. Custom providers must allow iframe embedding; an external viewing link is also available.</p>

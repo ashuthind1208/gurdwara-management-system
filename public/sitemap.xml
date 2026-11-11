@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.singhsabhamilton.org/</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/about</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/sikhism</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/gurbani-library</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/hukamnama</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/events</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/seva</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/donation</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/gallery</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/news</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/library</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/faq</loc></url>
-  <url><loc>https://www.singhsabhamilton.org/contact</loc></url>
+  <url><loc>https://example.org/</loc></url>
+  <url><loc>https://example.org/about</loc></url>
+  <url><loc>https://example.org/sikhism</loc></url>
+  <url><loc>https://example.org/gurbani-library</loc></url>
+  <url><loc>https://example.org/hukamnama</loc></url>
+  <url><loc>https://example.org/events</loc></url>
+  <url><loc>https://example.org/seva</loc></url>
+  <url><loc>https://example.org/donation</loc></url>
+  <url><loc>https://example.org/gallery</loc></url>
+  <url><loc>https://example.org/news</loc></url>
+  <url><loc>https://example.org/library</loc></url>
+  <url><loc>https://example.org/faq</loc></url>
+  <url><loc>https://example.org/contact</loc></url>
 </urlset>

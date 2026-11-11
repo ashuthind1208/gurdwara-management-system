@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button';
 import { BRANDING_FONT_OPTIONS, BRANDING_PRESETS, BRANDING_THEME_KEYS, DEFAULT_GURDWARA_BRANDING } from '../../context/BrandingContext';
 import brandingService from '../../services/brandingService';
 import uploadService from '../../services/uploadService';
-import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
+import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 
 const CONTACT_FIELDS = ['address', 'phone', 'email', 'facebookUrl', 'instagramUrl', 'youtubeUrl'];
 const getReadableTextColor = (hexColor) => {

@@ -6,7 +6,7 @@ const PUSH_SUBSCRIPTIONS_RESOURCE = 'push_subscriptions';
 const VAPID_KEYS_FILE = path.join(__dirname, 'data', 'vapid-keys.json');
 const DEFAULT_ICON = '/notification-icon.svg';
 const DEFAULT_BADGE = '/notification-badge.svg';
-const DEFAULT_IMAGE = '/gurdwara-logo.webp';
+const DEFAULT_IMAGE = '/default-gurdwara.svg';
 const DEFAULT_TAG = 'ssm-update';
 
 const loadOrCreateVapidKeys = () => {
@@ -38,7 +38,7 @@ const loadOrCreateVapidKeys = () => {
 };
 
 const vapidKeys = loadOrCreateVapidKeys();
-const vapidSubject = String(process.env.PUSH_VAPID_SUBJECT || 'mailto:notifications@singhsabhamilton.org').trim();
+const vapidSubject = String(process.env.PUSH_VAPID_SUBJECT || 'mailto:notifications@example.invalid').trim();
 
 webpush.setVapidDetails(vapidSubject, vapidKeys.publicKey, vapidKeys.privateKey);
 
@@ -103,7 +103,7 @@ const broadcastNotification = async (eventsDb, { title, body, url = '/', tag = D
   }
 
   const payload = JSON.stringify({
-    title: String(title || 'Singh Sabha Milton').slice(0, 120),
+    title: String(title || process.env.ORGANIZATION_NAME || 'Your Gurdwara').slice(0, 120),
     body: String(body || '').slice(0, 500),
     url,
     tag,

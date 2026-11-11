@@ -163,7 +163,7 @@ test('Sikh widgets only accept supported sources, banis and Ang numbers', () => 
     ['gurbani-ang', { ang: 0 }], ['gurbani-ang', { ang: 1431 }], ['gurbani-ang', { ang: 1.5 }],
     ['nitnem-reader', { bani: 'Unknown bani' }]
   ]) assert.throws(() => widgets.validateWidgetPlacements({ placements: [placement({ widgetId, config })] }));
-  for (const gurdwara of ['Sri Harmandir Sahib (BaniDB)', 'Singh Sabha Milton']) {
+  for (const gurdwara of ['Sri Harmandir Sahib (BaniDB)', 'This Gurdwara']) {
     assert.equal(widgets.validateWidgetPlacements({ placements: [placement({ widgetId: 'gurdwara-hukamnama', config: { gurdwara } })] }).placements[0].config.gurdwara, gurdwara);
   }
 });

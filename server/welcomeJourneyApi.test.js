@@ -37,19 +37,29 @@ const createHarness = ({ users = [adminUser], verifiedProfile = { email: adminUs
   };
 };
 
-test('public settings reads return persisted configuration or safe defaults and disclose edit capability only after Google verification', async () => {
+test('public settings use safe defaults and the existing admin portal token authorizes an approved account', async () => {
   const api = createHarness();
   const visitor = await api.request(settingsPath);
   assert.equal(visitor.status, 200);
   assert.equal(visitor.body.data.enabled, true);
   assert.equal(visitor.body.data.canSave, false);
+  assert.equal(visitor.body.data.canSaveReason, 'google_sign_in_required');
   assert.deepEqual(visitor.body.data.dishes, []);
   const admin = await api.request(settingsPath, 'GET', {}, adminHeaders);
   assert.equal(admin.body.data.canSave, true);
+  assert.equal(admin.body.data.canSaveReason, null);
   assert.equal(admin.body.data.followUpAvailable, true);
+  const memberAccount = { ...adminUser, role: 'Admin' };
+  const adminOnly = createHarness({ users: [memberAccount] });
+  const adminAccess = await adminOnly.request(settingsPath, 'GET', {}, { ...adminHeaders, 'x-actor-role': 'Admin' });
+  assert.equal(adminAccess.body.data.canSave, false);
+  assert.equal(adminAccess.body.data.canSaveReason, 'super_admin_required');
+  const expired = createHarness();
+  const expiredAccess = await expired.request(settingsPath, 'GET', {}, { ...adminHeaders, authorization: 'Bearer expired-token' });
+  assert.equal(expiredAccess.body.data.canSaveReason, 'google_session_expired');
 });
 
-test('only a verified active approved Super Admin can save settings and saves are audited', async () => {
+test('only an active approved Super Admin can save settings and saves are audited', async () => {
   const api = createHarness();
   const payload = { ...DEFAULT_WELCOME_JOURNEY_SETTINGS, titleEnglish: 'New welcome', dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: '' }], selectedDishIds: ['dal'] };
   const result = await api.request(settingsPath, 'PUT', payload, adminHeaders);
@@ -59,9 +69,8 @@ test('only a verified active approved Super Admin can save settings and saves ar
   assert.equal(api.writes[0][0], 'welcome_journey_settings');
   assert.equal(api.audits[0].action, 'welcome_journey.settings.update');
   for (const options of [
-    { headers: { ...adminHeaders, authorization: 'Bearer google-session-token-1' } },
-    { headers: { ...adminHeaders, authorization: '' } },
     { headers: { ...adminHeaders, 'x-actor-email': 'victim@example.test' } },
+    { headers: { ...adminHeaders, authorization: 'Bearer google-session-token-1' } },
     { headers: adminHeaders, verifiedProfile: { email: adminUser.email, email_verified: false } },
     { headers: adminHeaders, users: [{ ...adminUser, isActive: false }] },
     { headers: adminHeaders, users: [{ ...adminUser, approvalStatus: 'pending' }] },
@@ -75,7 +84,7 @@ test('only a verified active approved Super Admin can save settings and saves ar
   assert.equal(invalid.status, 400);
 });
 
-test('visitors can submit only consented follow-ups, and only verified admins can read private records', async () => {
+test('visitors can submit only consented follow-ups, and only authorized admins can read private records', async () => {
   const api = createHarness();
   const body = { name: 'Sangat Visitor', email: 'VISITOR@example.test', phone: '', message: 'Please contact me', consent: true, website: '' };
   const submitted = await api.request(followUpsPath, 'POST', body, {}, 'submitter-ip');

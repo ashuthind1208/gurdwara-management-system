@@ -1,5 +1,5 @@
 const CACHE_NAME = 'ssm-app-shell-v5';
-const APP_SHELL = ['/', '/manifest.json', '/logo192.png', '/logo512.png', '/gurdwara-logo.webp', '/favicon-32.png', '/notification-icon.svg', '/notification-badge.svg'];
+const APP_SHELL = ['/', '/manifest.json', '/default-gurdwara.svg', '/favicon-32.png', '/notification-icon.svg', '/notification-badge.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -25,15 +25,15 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: 'Singh Sabha Milton', body: event.data ? event.data.text() : '' };
+    payload = { title: 'Gurdwara Community Platform', body: event.data ? event.data.text() : '' };
   }
 
-  const title = payload.title || 'Singh Sabha Milton';
+  const title = payload.title || 'Gurdwara Community Platform';
   const icon = new URL(payload.icon || '/notification-icon.svg', self.location.origin).href;
   const options = {
     body: payload.body || '',
     icon,
-    image: new URL(payload.image || '/gurdwara-logo.webp', self.location.origin).href,
+    image: new URL(payload.image || '/default-gurdwara.svg', self.location.origin).href,
     badge: new URL(payload.badge || '/notification-badge.svg', self.location.origin).href,
     tag: payload.tag || 'ssm-update',
     renotify: false,

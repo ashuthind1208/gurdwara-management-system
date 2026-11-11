@@ -18,7 +18,7 @@ const noop = () => {};
 // Display-only LED screen. Which boards play, and for how long, is controlled from the admin portal and picked up on refresh.
 const LedBoardLauncherPage = () => {
   const { branding, logoSrc } = useBranding();
-  const meta = useSeoMeta('LED Board', 'Singh Sabha Milton LED display.');
+  const meta = useSeoMeta('LED Board', 'Gurdwara community LED display.');
   const [searchParams] = useSearchParams();
   const screenId = readScreenId(searchParams.get('screen'));
   const [currentSlide, setCurrentSlide] = useState('Starting');

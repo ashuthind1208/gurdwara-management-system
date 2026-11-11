@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 const fallbackContent = {
   eyebrow: 'Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh',
-  title: 'Gurdwara Singh Sabha Milton',
+  title: 'Your Gurdwara',
   description: 'Daily hukamnama, samagams, seva, and community support in one place.',
   slideIntervalSeconds: 5,
   slides: [

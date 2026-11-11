@@ -9,6 +9,7 @@ import useSeoMeta from '../../hooks/useSeoMeta';
 import Seo from '../../components/common/Seo';
 import notificationService from '../../services/notificationService';
 import { useAuth } from '../../context/AuthContext';
+import { siteConfig } from '../../constants/siteConfig';
 
 const newsletterDefaults = {
   name: '',
@@ -16,7 +17,7 @@ const newsletterDefaults = {
 };
 
 const NewsletterSignupPage = () => {
-  const meta = useSeoMeta('Newsletter', 'Subscribe to weekly updates from Singh Sabha Milton Gurdwara.');
+  const meta = useSeoMeta('Newsletter', `Subscribe to updates from ${siteConfig.name}.`);
   const { user, isAuthenticated } = useAuth();
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(true);
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
@@ -133,7 +134,7 @@ const NewsletterSignupPage = () => {
                 >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
-                <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.18em] text-white/85">Singh Sabha Milton Gurdwara</p>
+                <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.18em] text-white/85">{siteConfig.name}</p>
                 <h3 className="mt-1 whitespace-nowrap font-heading text-base font-extrabold sm:text-xl">Sign Up for Weekly Newsletter</h3>
                 <p className="mt-2 text-sm text-white/90">Choose one or more topics to personalize your newsletter delivery.</p>
               </div>
