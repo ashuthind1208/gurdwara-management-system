@@ -48,6 +48,7 @@ const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 
 const AdminDashboardPage = lazy(() => import('../admin/Dashboard/AdminDashboardPage'));
 const AdminCmsPage = lazy(() => import('../admin/CMS/AdminCmsPage'));
+const AdminWidgetsPage = lazy(() => import('../admin/Widgets/AdminWidgetsPage'));
 const AdminNewsPage = lazy(() => import('../admin/News/AdminNewsPage'));
 const AdminSchedulePage = lazy(() => import('../admin/Schedule/AdminSchedulePage'));
 const AdminHukamnamaPage = lazy(() => import('../admin/Hukamnama/AdminHukamnamaPage'));
@@ -63,6 +64,9 @@ const AdminAdvertisementsPage = lazy(() => import('../admin/Advertisements/Admin
 const AdminSponsorsPage = lazy(() => import('../admin/Sponsors/AdminSponsorsPage'));
 const AdminLedAnnouncementsPage = lazy(() => import('../admin/LedAnnouncements/AdminLedAnnouncementsPage'));
 const AdminCommunityAnnouncementsPage = lazy(() => import('../admin/LedAnnouncements/AdminCommunityAnnouncementsPage'));
+const WelcomeJourneyPage = lazy(() => import('../pages/Welcome/WelcomeJourneyPage'));
+const WelcomeJourneyBoardPage = lazy(() => import('../pages/Boards/WelcomeJourneyBoardPage'));
+const AdminWelcomeJourneyPage = lazy(() => import('../admin/LedAnnouncements/AdminWelcomeJourneyPage'));
 const AdminRecitationsPage = lazy(() => import('../admin/Recitations/AdminRecitationsPage'));
 const AdminSocialPostsPage = lazy(() => import('../admin/SocialPosts/AdminSocialPostsPage'));
 const AdminEventsPage = lazy(() => import('../admin/Events/AdminEventsPage'));
@@ -108,6 +112,7 @@ const AppRoutes = () => {
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/welcome" element={<WelcomeJourneyPage />} />
           <Route path="*" element={<CustomCmsPage />} />
         </Route>
 
@@ -124,6 +129,7 @@ const AppRoutes = () => {
         <Route path="/led-boards" element={<LedEmergencyGuard><LedBoardLauncherPage /></LedEmergencyGuard>} />
         <Route path="/special-events-board" element={<LedEmergencyGuard><LedAnnouncementsBoardPage /></LedEmergencyGuard>} />
         <Route path="/community-announcements-board" element={<LedEmergencyGuard><CommunityAnnouncementsBoardPage /></LedEmergencyGuard>} />
+        <Route path="/welcome-journey-board" element={<LedEmergencyGuard><WelcomeJourneyBoardPage /></LedEmergencyGuard>} />
         <Route path="/hukamnama-board" element={<LedEmergencyGuard><LedHukamnamaBoardPage /></LedEmergencyGuard>} />
         <Route path="/recitation-board" element={<LedEmergencyGuard><RecitationLedBoardPage /></LedEmergencyGuard>} />
         <Route path="/stream-overlay" element={<LedEmergencyGuard><StreamOverlayPage /></LedEmergencyGuard>} />
@@ -137,6 +143,10 @@ const AppRoutes = () => {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/cms" element={<AdminCmsPage />} />
+            <Route element={<ProtectedRoute allowedRoles={ROLES_ACCESS_ALLOWED_ROLES} allowAssignedAdminAccess={false} />}>
+              <Route path="/admin/widgets" element={<AdminWidgetsPage />} />
+              <Route path="/admin/welcome-journey" element={<AdminWelcomeJourneyPage />} />
+            </Route>
             <Route path="/admin/news" element={<AdminNewsPage />} />
             <Route path="/admin/schedule" element={<AdminSchedulePage />} />
             <Route path="/admin/hukamnama" element={<AdminHukamnamaPage />} />

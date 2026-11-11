@@ -98,10 +98,13 @@ loadEnvFile(path.join(workspaceRoot, '.env.local'));
 
 const eventsDb = require('./db/adapter');
 const pushNotifications = require('./pushNotifications');
+const instacartConnect = require('./instacartConnect');
 const { createRecitationService } = require('./recitation');
 const { createSocialPostingService } = require('./socialPosting');
 const { createLedScreenService } = require('./ledScreenService');
 const { createWhatsAppWebhookHandler } = require('./whatsappWebhook');
+const { createWelcomeJourneyHandler } = require('./welcomeJourneyApi');
+const { createWidgetPlacementsHandler, projectPublicWidgetPlacements } = require('./widgetPlacements');
 const openWaNotifications = createOpenWaNotifications({ db: eventsDb });
 const langarBoardEventClients = new Set();
 
@@ -6419,6 +6422,22 @@ const ledScreenService = createLedScreenService({
   assertInput,
   isAdmin: canManageDonations
 });
+const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson });
+const welcomeJourneyHandler = createWelcomeJourneyHandler({
+  eventsDb,
+  getRequestActor,
+  parseJsonObjectBody,
+  sendJson,
+  verifyGoogleAccessToken: async (token) => {
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) throw new Error('Google token verification failed.');
+    return response.json();
+  },
+  appendAuditLog
+});
 
 const server = http.createServer(async (request, response) => {
   const requestUrl = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
@@ -6459,6 +6478,16 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (requestUrl.pathname === '/api/widget-placements') {
+    await widgetPlacementsHandler(request, response);
+    return;
+  }
+
+  if (requestUrl.pathname.startsWith('/api/welcome-journey/')) {
+    await welcomeJourneyHandler(request, response, requestUrl);
+    return;
+  }
+
   if (requestUrl.pathname === '/api/gurpurab/holidays' || requestUrl.pathname === '/api/gurpurab/upcoming') {
     const result = await handleGurpurabRequest(requestUrl, {
       method: request.method,
@@ -6478,6 +6507,34 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (await ledScreenService.handleApi(request, response, requestUrl)) {
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/instacart/readiness' && request.method === 'GET') {
+    sendJson(response, 200, { ok: true, data: instacartConnect.getReadiness() });
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/instacart/quote' && request.method === 'POST') {
+    try {
+      const body = await parseJsonObjectBody(request, { maxBytes: 32 * 1024, allowEmpty: false });
+      assertInput(Array.isArray(body.items) && body.items.length > 0 && body.items.length <= 20, 'Choose between 1 and 20 grocery items.');
+      const seenItems = new Set();
+      const items = body.items.map((item) => {
+        const itemId = readStringField(item, 'itemId', { required: true, max: 80 });
+        const name = readStringField(item, 'name', { required: true, max: 120 });
+        const quantity = Number(item.quantity);
+        assertInput(Number.isInteger(quantity) && quantity > 0 && quantity <= 1000, 'Each grocery quantity must be from 1 to 1000.');
+        assertInput(!seenItems.has(itemId), 'Grocery item identifiers must be unique.');
+        seenItems.add(itemId);
+        return { itemId, name, quantity, unit: readStringField(item, 'unit', { max: 40 }) || 'items' };
+      });
+      const postalCode = readStringField(body, 'postalCode', { max: 20 });
+      const data = await instacartConnect.getQuote({ items, postalCode });
+      sendJson(response, 200, { ok: true, data });
+    } catch (error) {
+      sendJson(response, error.status || 502, { ok: false, message: error.message || 'Unable to retrieve Instacart options.' });
+    }
     return;
   }
 
@@ -8398,6 +8455,7 @@ const server = http.createServer(async (request, response) => {
     try {
       const resource = String(contentSingleMatch[1]).toLowerCase();
       let data = await eventsDb.getSingleton(resource, null);
+      if (resource === 'widget_placements') data = projectPublicWidgetPlacements(data);
       if (resource === 'cms_home_content' && data && !await canManageAdminPage(request, '/admin/langar')) {
         data = {
           ...data,
@@ -8417,6 +8475,7 @@ const server = http.createServer(async (request, response) => {
   if (contentSingleMatch && request.method === 'PUT') {
     try {
       const resource = String(contentSingleMatch[1]).toLowerCase();
+      assertInput(resource !== 'widget_placements' && resource !== 'welcome_journey_settings', 'Use the dedicated validated endpoint to update this resource.', 403);
       if (resource === 'booking_duty_settings') {
         assertInput(canManageBookingDuties(request), 'Only Admin and Super Admin can assign booking duties.', 403);
       }

@@ -34,7 +34,7 @@ const previewItems = [
 ];
 
 const Donut = ({ value }) => (
-  <div className="relative h-36 w-36 shrink-0 rounded-full p-2 sm:h-44 sm:w-44" style={{ background: `conic-gradient(#f5a623 ${value * 3.6}deg, rgba(255,255,255,.14) 0deg)` }}>
+  <div className="relative h-36 w-36 shrink-0 rounded-full p-2 sm:h-44 sm:w-44" style={{ background: `conic-gradient(var(--brand-saffron, #f5a623) ${value * 3.6}deg, rgba(255,255,255,.14) 0deg)` }}>
     <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#071b3b] text-center">
       <strong className="block text-4xl font-black leading-none text-white sm:text-5xl">{value}%</strong>
       <span className="mt-1 block text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-cyan-100 sm:text-xs">complete</span>

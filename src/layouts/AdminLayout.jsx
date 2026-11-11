@@ -419,6 +419,8 @@ const getNotificationToneClasses = (entry, isRead) => {
 const iconByPath = {
   '/admin': Squares2X2Icon,
   '/admin/cms': RectangleGroupIcon,
+  '/admin/widgets': RectangleGroupIcon,
+  '/admin/welcome-journey': SparklesIcon,
   '/admin/news': NewspaperIcon,
   '/admin/schedule': CalendarDaysIcon,
   '/admin/hukamnama': SparklesIcon,

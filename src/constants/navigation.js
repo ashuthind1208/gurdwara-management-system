@@ -19,6 +19,7 @@ export const publicNav = [
 export const adminNav = [
   { label: 'Dashboard', path: '/admin' },
   { label: 'CMS', path: '/admin/cms' },
+  { label: 'Widgets', path: '/admin/widgets' },
   { label: 'News and Updates', path: '/admin/news' },
   { label: 'Daily Schedule', path: '/admin/schedule' },
   { label: 'Hukamnama', path: '/admin/hukamnama' },
@@ -32,6 +33,7 @@ export const adminNav = [
   { label: 'Advertisements', path: '/admin/advertisements' },
   { label: 'Sponsors', path: '/admin/sponsors' },
   { label: 'LED Board', path: '/admin/led-announcements' },
+  { label: 'Welcome Journey', path: '/admin/welcome-journey' },
   { label: 'Gurbani Studio', path: '/admin/recitations' },
   { label: 'Community Notices', path: '/admin/community-announcements' },
   { label: 'Social Posts', path: '/admin/social-posts' },

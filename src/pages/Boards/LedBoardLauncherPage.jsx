@@ -11,6 +11,7 @@ import { buildLedSlides, getLedScreens, readScreenId } from '../../constants/led
 import { useBranding } from '../../context/BrandingContext';
 import nanakshahiHolidayService from '../../services/nanakshahiHolidayService';
 import useLedScreenHeartbeat from '../../hooks/useLedScreenHeartbeat';
+import welcomeJourneyService from '../../services/welcomeJourneyService';
 
 const noop = () => {};
 
@@ -32,6 +33,12 @@ const LedBoardLauncherPage = () => {
     queryKey: ['led-board-announcements'],
     queryFn: () => ledAnnouncementService.getAnnouncements().then((response) => response.data),
     refetchInterval: 5000,
+    refetchIntervalInBackground: true
+  });
+  const { data: welcomeJourneySettings } = useQuery({
+    queryKey: ['welcome-journey-settings'],
+    queryFn: welcomeJourneyService.getSettings,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true
   });
 
@@ -62,8 +69,8 @@ const LedBoardLauncherPage = () => {
   }, [holidays, settings]);
 
   const slides = useMemo(
-    () => (settings ? buildLedSlides(settings, { liveAnnouncements: announcements.filter((entry) => isAnnouncementLive(entry) && (!entry.screenIds?.length || entry.screenIds.includes(screenId))), hasHukamnama, screenId, festivalSlides }) : []),
-    [settings, announcements, hasHukamnama, screenId, festivalSlides]
+    () => (settings ? buildLedSlides(settings, { liveAnnouncements: announcements.filter((entry) => isAnnouncementLive(entry) && (!entry.screenIds?.length || entry.screenIds.includes(screenId))), hasHukamnama, screenId, festivalSlides, welcomeJourneyEnabled: welcomeJourneySettings?.enabled !== false }) : []),
+    [settings, announcements, hasHukamnama, screenId, festivalSlides, welcomeJourneySettings]
   );
 
   return (

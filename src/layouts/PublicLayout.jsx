@@ -6,11 +6,14 @@ import Footer from '../components/layout/Footer';
 import phase2Service from '../services/phase2Service';
 import FloatingAskGranthi from '../components/askGranthi/FloatingAskGranthi';
 import FloatingGutkaReader from '../components/recitation/FloatingGutkaReader';
+import PageWidgets from '../components/widgets/PageWidgets';
+import { publicNav } from '../constants/navigation';
 
 const PublicLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isHomeRoute = location.pathname === '/';
+  const isBuiltInPublicPage = publicNav.some((page) => page.path === location.pathname);
   const kioskTimerRef = useRef(null);
   const { data: phase2ChannelsConfig } = useQuery({
     queryKey: ['phase2-channels-config-public'],
@@ -75,9 +78,12 @@ const PublicLayout = () => {
     <div className="flex min-h-screen flex-col overflow-x-clip bg-brand-cream text-slate-900 transition-colors">
       <Navbar />
       <main className={`mx-auto w-full max-w-7xl flex-1 px-4 ${isHomeRoute ? 'pt-0 pb-5 md:pt-0 md:pb-6' : 'py-5 md:py-6'} md:px-6`}>
+        {isBuiltInPublicPage ? <PageWidgets pagePath={location.pathname} region="header" /> : null}
         <Suspense fallback={<div className="py-20 text-center text-slate-600">Loading page...</div>}>
           <Outlet />
         </Suspense>
+        {isBuiltInPublicPage ? <PageWidgets pagePath={location.pathname} region="columns" /> : null}
+        {isBuiltInPublicPage ? <PageWidgets pagePath={location.pathname} region="footer" /> : null}
       </main>
       <Footer />
       <div className="hidden xl:block"><FloatingGutkaReader /></div>

@@ -5,8 +5,8 @@ import Card from '../../components/ui/Card';
 import StatusAlert from '../../components/common/StatusAlert';
 import useDailyHukamnama from '../../hooks/useDailyHukamnama';
 import ledAnnouncementService, { isAnnouncementForScreen, isAnnouncementLive } from '../../services/ledAnnouncementService';
-import ledBoardSettingsService, { clampHukamnamaSeconds, clampInterval } from '../../services/ledBoardSettingsService';
-import { HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, HUKAMNAMA_PRESETS, INTERVAL_PRESETS, LED_BOARDS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, buildLedSlides, getLedScreens, slugifyScreenId } from '../../constants/ledBoards';
+import ledBoardSettingsService, { clampHukamnamaSeconds, clampInterval, clampWelcomeSeconds } from '../../services/ledBoardSettingsService';
+import { DEFAULT_WELCOME_SECONDS, HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, HUKAMNAMA_PRESETS, INTERVAL_PRESETS, LED_BOARDS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, WELCOME_MAX_SECONDS, WELCOME_MIN_SECONDS, WELCOME_PRESETS, buildLedSlides, getLedScreens, slugifyScreenId } from '../../constants/ledBoards';
 
 const SETTINGS_QUERY_KEY = ['led-board-settings'];
 
@@ -88,6 +88,10 @@ const LedBoardControlCard = () => {
     const next = clampHukamnamaSeconds(value);
     if (next !== settings.hukamnamaSeconds) save({ hukamnamaSeconds: next });
   };
+  const commitWelcomeSeconds = (value) => {
+    const next = clampWelcomeSeconds(value);
+    if (next !== settings.welcomeSeconds) save({ welcomeSeconds: next });
+  };
 
   const setScreenPlaylist = (screenId, keys) => {
     const current = queryClient.getQueryData(SETTINGS_QUERY_KEY) || settings;
@@ -123,8 +127,9 @@ const LedBoardControlCard = () => {
     setSelectedScreen('main');
   };
 
-  const selectedPlaylist = settings.screenPlaylists?.[selectedScreen]
-    || LED_BOARDS.filter((board) => settings.enabled[board.key]).map((board) => board.key);
+  const selectedPlaylist = [...(settings.screenPlaylists?.[selectedScreen]
+    || LED_BOARDS.filter((board) => settings.enabled[board.key]).map((board) => board.key))];
+  if (selectedScreen === 'lobby' && settings.enabled.welcome && !selectedPlaylist.includes('welcome')) selectedPlaylist.push('welcome');
 
   const cycleSeconds = slides.reduce((total, slide) => total + slide.durationSeconds, 0);
 
@@ -142,6 +147,7 @@ const LedBoardControlCard = () => {
 
       <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-slate-100 pb-4">
         <SecondsControl id="led-interval" label="Seconds per slide" value={settings.intervalSeconds} min={MIN_INTERVAL_SECONDS} max={MAX_INTERVAL_SECONDS} presets={INTERVAL_PRESETS} onCommit={commitInterval} />
+        {settings.enabled.welcome ? <SecondsControl id="led-welcome-seconds" label="Welcome QR slide duration" value={settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS} min={WELCOME_MIN_SECONDS} max={WELCOME_MAX_SECONDS} presets={WELCOME_PRESETS} onCommit={commitWelcomeSeconds} /> : null}
         <p className="pb-2 text-sm font-semibold text-slate-700" aria-live="polite">
           {slides.length ? `${slides.length} slide${slides.length === 1 ? '' : 's'} · full cycle ${formatDuration(cycleSeconds)}` : 'No slides active. The LED screen shows the Gurdwara logo.'}
         </p>
@@ -155,7 +161,8 @@ const LedBoardControlCard = () => {
             ? (liveAnnouncements.length === 0 ? 'No active announcements; skipped until one is added' : `${liveAnnouncements.length} active announcement${liveAnnouncements.length === 1 ? '' : 's'}, one slide each`)
             : board.key === 'hukamnama' && !hasHukamnama
               ? 'Not posted for today yet; skipped until it is'
-              : board.hasOwnDuration ? `${board.description} Shown for ${formatDuration(settings.hukamnamaSeconds)}.` : board.description;
+              : board.key === 'hukamnama' ? `${board.description} Shown for ${formatDuration(settings.hukamnamaSeconds)}.`
+                : board.key === 'welcome' ? `${board.description} Shown for ${formatDuration(settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS)}.` : board.description;
           return (
             <li key={board.key} className={`min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 ${board.key === 'hukamnama' ? 'md:col-span-2' : ''}`}>
               <div className={board.key === 'hukamnama' ? 'grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2.5 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]' : 'flex min-w-0 flex-wrap items-center gap-2.5'}>
@@ -195,8 +202,8 @@ const LedBoardControlCard = () => {
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {LED_BOARDS.map((board) => (
             <label key={board.key} className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 text-sm text-slate-700">
-              <input type="checkbox" checked={selectedPlaylist.includes(board.key)} disabled={!settings.enabled[board.key]} onChange={(event) => setScreenPlaylist(selectedScreen, event.target.checked ? [...selectedPlaylist, board.key] : selectedPlaylist.filter((key) => key !== board.key))} />
-              {board.title}{!settings.enabled[board.key] ? <span className="text-xs text-slate-400">(globally off)</span> : null}
+              <input type="checkbox" checked={selectedPlaylist.includes(board.key)} disabled={!settings.enabled[board.key] || (board.key === 'welcome' && selectedScreen === 'lobby' && settings.enabled.welcome)} onChange={(event) => setScreenPlaylist(selectedScreen, event.target.checked ? [...selectedPlaylist, board.key] : selectedPlaylist.filter((key) => key !== board.key))} />
+              {board.title}{!settings.enabled[board.key] ? <span className="text-xs text-slate-400">(globally off)</span> : board.key === 'welcome' && selectedScreen === 'lobby' ? <span className="text-xs text-slate-500">(lobby welcome)</span> : null}
             </label>
           ))}
         </div>

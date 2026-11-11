@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArchiveBoxIcon, CalendarDaysIcon, ChevronRightIcon, GiftIcon, MinusIcon, PlusIcon, UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxIcon, CalendarDaysIcon, ChevronRightIcon, GiftIcon, MinusIcon, PlusIcon, ShoppingBagIcon, TruckIcon, UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import langarService, { LANGAR_CONTRIBUTIONS_RESOURCE } from '../../services/langarService';
+import instacartService from '../../services/instacartService';
 import gurdwaraLogo from '../../assets/gurdwara-logo.webp';
 
 const HEADER_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1800&q=88';
@@ -58,6 +59,12 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
   const [deliveryDate, setDeliveryDate] = useState('');
   const [anonymous, setAnonymous] = useState(false);
   const [notice, setNotice] = useState('');
+  const [contributionMethod, setContributionMethod] = useState('bring');
+  const [instacartItems, setInstacartItems] = useState([]);
+  const [instacartPostalCode, setInstacartPostalCode] = useState('');
+  const [instacartOptions, setInstacartOptions] = useState(null);
+  const [isInstacartLoading, setIsInstacartLoading] = useState(false);
+  const [isInstacartOptionsOpen, setIsInstacartOptionsOpen] = useState(false);
   const [itemsPage, setItemsPage] = useState(1);
   const [contributorsPage, setContributorsPage] = useState(1);
   const itemsPerPage = 10;
@@ -99,7 +106,7 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
     return result;
   }, {}), [contributions]);
 
-  const remainingForItem = (item) => Math.max(0, Number(item?.quantityRequired || 0) - Number(item?.quantityReceived || 0) - Number(pendingByItem[String(item?.id || '')] || 0));
+  const remainingForItem = useCallback((item) => Math.max(0, Number(item?.quantityRequired || 0) - Number(item?.quantityReceived || 0) - Number(pendingByItem[String(item?.id || '')] || 0)), [pendingByItem]);
 
   const remainingForSelected = selectedItem ? remainingForItem(selectedItem) : 0;
 
@@ -117,7 +124,16 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
   });
 
   const openBoard = () => { setBoardOpen(true); onOpen?.(); };
-  const openContribution = (item) => { setSelectedItem(item); setQuantity(1); setQuantityDraft('1'); setNotice(''); };
+  const openContribution = useCallback((item) => {
+    setSelectedItem(item);
+    setQuantity(1);
+    setQuantityDraft('1');
+    setNotice('');
+    setContributionMethod('bring');
+    setInstacartItems([{ itemId: item.id, name: item.name, quantity: 1, unit: item.unit, maxQuantity: remainingForItem(item) }]);
+    setInstacartOptions(null);
+    setIsInstacartOptionsOpen(false);
+  }, [remainingForItem]);
 
   useEffect(() => {
     if (!isAuthenticated || activeItems.length === 0) return;
@@ -146,7 +162,7 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
     } catch {
       // Ignore storage errors.
     }
-  }, [isAuthenticated, activeItems]);
+  }, [isAuthenticated, activeItems, openContribution]);
 
   const startSignInForContribution = () => {
     try {
@@ -177,6 +193,10 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
 
   const submitContribution = (event) => {
     event.preventDefault();
+    if (contributionMethod === 'instacart') {
+      setNotice('Find store options above; Instacart checkout is not enabled yet.');
+      return;
+    }
     if (!isAuthenticated) { startSignInForContribution(); return; }
     contributionMutation.mutate({
       itemId: selectedItem.id,
@@ -189,6 +209,43 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
       anonymous,
       expectedDeliveryDate: deliveryDate
     });
+  };
+
+  const toggleInstacartItem = (item) => {
+    setInstacartItems((current) => {
+      const existing = current.find((entry) => String(entry.itemId) === String(item.id));
+      if (existing) return current.filter((entry) => String(entry.itemId) !== String(item.id));
+      return [...current, { itemId: item.id, name: item.name, quantity: 1, unit: item.unit, maxQuantity: remainingForItem(item) }];
+    });
+    setInstacartOptions(null);
+  };
+
+  const updateInstacartItemQuantity = (itemId, value) => {
+    setInstacartItems((current) => current.map((entry) => (
+      String(entry.itemId) === String(itemId)
+        ? { ...entry, quantity: Math.min(entry.maxQuantity, Math.max(1, Number(value) || 1)) }
+        : entry
+    )));
+    setInstacartOptions(null);
+  };
+
+  const checkInstacartOptions = async () => {
+    if (!instacartItems.length) {
+      setNotice('Select at least one Langar item first.');
+      return;
+    }
+    setIsInstacartLoading(true);
+    setNotice('');
+    try {
+      const options = await instacartService.getStoreOptions({ items: instacartItems, postalCode: instacartPostalCode });
+      setInstacartOptions(options);
+      setIsInstacartOptionsOpen(true);
+    } catch (error) {
+      setInstacartOptions({ available: false, stores: [], readiness: { message: error?.message || 'Unable to retrieve store options.' } });
+      setIsInstacartOptionsOpen(true);
+    } finally {
+      setIsInstacartLoading(false);
+    }
   };
 
   const homeCard = (
@@ -403,7 +460,7 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
             </div>
 
             <form className="space-y-4 p-4 sm:p-6" onSubmit={submitContribution}>
-              <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+              {contributionMethod === 'bring' ? <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-blue">Contribution Summary</p>
                 <div className="mt-3 flex items-center gap-3">
                   <img src={imageForItem(selectedItem)} alt="" className="h-14 w-14 rounded-lg object-cover" />
@@ -413,9 +470,44 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
                     <p className="text-xs text-slate-500">Expected Delivery Date: {formatDate(deliveryDate)}</p>
                   </div>
                 </div>
-              </div>
+              </div> : null}
 
               <div>
+                <p className="mb-2 text-sm font-bold uppercase tracking-wide text-brand-navy">How would you like to contribute?</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={() => setContributionMethod('bring')} className={`rounded-xl border-2 px-3 py-3 text-left ${contributionMethod === 'bring' ? 'border-brand-blue bg-blue-50' : 'border-slate-200 bg-white'}`}><span className="flex items-center gap-2 text-sm font-extrabold text-brand-blue"><TruckIcon className="h-5 w-5" />I’ll bring it myself</span><span className="mt-1 block text-xs text-slate-500">Commit to bringing supplies to the Gurdwara.</span></button>
+                  <button type="button" onClick={() => setContributionMethod('instacart')} className={`rounded-xl border-2 px-3 py-3 text-left ${contributionMethod === 'instacart' ? 'border-brand-saffron bg-brand-saffron/10' : 'border-slate-200 bg-white'}`}><span className="flex items-center gap-2 text-sm font-extrabold text-brand-blue"><ShoppingBagIcon className="h-5 w-5 text-emerald-700" />Order via Instacart</span><span className="mt-1 block text-xs text-slate-500">Check grocery availability near you.</span></button>
+                </div>
+              </div>
+
+              {contributionMethod === 'instacart' ? <section className="rounded-xl border border-brand-saffron/30 bg-brand-saffron/10 p-4">
+                <h3 className="text-sm font-bold text-brand-navy">Build your grocery order</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Select current Langar needs. Store options require an active Instacart Connect configuration.</p>
+                <div className="mt-3 space-y-2">
+                  {activeItems.filter((item) => remainingForItem(item) > 0).slice(0, 20).map((item) => {
+                    const selected = instacartItems.find((entry) => String(entry.itemId) === String(item.id));
+                    const maxQuantity = remainingForItem(item);
+                    return <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-saffron/20 bg-white px-3 py-2">
+                      <input type="checkbox" checked={Boolean(selected)} onChange={() => toggleInstacartItem(item)} aria-label={`Add ${item.name} to Instacart order`} className="h-4 w-4" />
+                      <span className="min-w-0 flex-1 text-sm font-semibold text-slate-700">{item.name} <span className="font-normal text-slate-500">({item.unit})</span></span>
+                      {selected ? <>
+                        <button type="button" onClick={() => updateInstacartItemQuantity(item.id, selected.quantity - 1)} disabled={selected.quantity <= 1} aria-label={`Decrease ${item.name} quantity`} className="h-7 w-7 rounded-md border border-slate-300 disabled:opacity-40">−</button>
+                        <span className="w-7 text-center text-sm font-bold">{selected.quantity}</span>
+                        <button type="button" onClick={() => updateInstacartItemQuantity(item.id, selected.quantity + 1)} disabled={selected.quantity >= maxQuantity} aria-label={`Increase ${item.name} quantity`} className="h-7 w-7 rounded-md border border-slate-300 disabled:opacity-40">+</button>
+                      </> : null}
+                    </div>;
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <label className="min-w-[10rem] flex-1"><span className="sr-only">Delivery postal code</span><input value={instacartPostalCode} onChange={(event) => setInstacartPostalCode(event.target.value)} maxLength={20} autoComplete="postal-code" placeholder="Postal code (optional)" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
+                  <button type="button" onClick={checkInstacartOptions} disabled={isInstacartLoading || instacartItems.length === 0} className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isInstacartLoading ? 'Checking…' : 'Find store options'}</button>
+                </div>
+                {isInstacartOptionsOpen && instacartOptions ? <div role="status" className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                  {instacartOptions.available && instacartOptions.stores?.length ? instacartOptions.stores.map((store) => <div key={store.id || store.name} className="flex justify-between gap-3 border-b border-slate-100 py-2 last:border-0"><span className="font-semibold">{store.name}</span><span className="font-bold text-brand-blue">{store.total || 'Price pending'}</span></div>) : <p className="text-slate-600">{instacartOptions.readiness?.message || 'No store options are available.'}</p>}
+                </div> : null}
+              </section> : null}
+
+              {contributionMethod === 'bring' ? <div>
                 <p className="mb-2 text-[11px] text-slate-500">Up to {remainingForSelected} {selectedItem.unit} still needed for this item.</p>
                 <p className="text-sm font-semibold text-slate-700">Quantity</p>
                 <div className="mt-1 flex items-center gap-2">
@@ -432,9 +524,9 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
                     <button key={suggestion} type="button" onClick={() => setContributionQuantity(suggestion)} className="rounded-full border border-brand-blue/25 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-brand-blue hover:bg-blue-100">{suggestion} {selectedItem.unit}</button>
                   ))}
                 </div>
-              </div>
+              </div> : null}
 
-              <div>
+              {contributionMethod === 'bring' ? <div>
                 <p className="text-sm font-bold uppercase tracking-wide text-slate-500">Your Details</p>
                 <div className="mt-2 space-y-2.5">
                   <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5">
@@ -449,13 +541,13 @@ const LangarNeedsBoardReference = ({ items = [], triggerOnly = false, navItem = 
                     <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} className="h-4 w-4" /> Keep my name anonymous
                   </label>
                 </div>
-              </div>
+              </div> : null}
 
               {notice ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">{notice}</p> : null}
 
-              <button type="submit" disabled={contributionMutation.isPending} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-saffron px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-500 disabled:opacity-50">
+              <button type="submit" disabled={contributionMutation.isPending || contributionMethod === 'instacart'} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-saffron px-4 py-3 text-sm font-bold text-slate-950 hover:bg-amber-500 disabled:opacity-50">
                 <GiftIcon className="h-4 w-4" />
-                {contributionMutation.isPending ? 'Saving...' : isAuthenticated ? 'Submit Contribution' : 'Sign in to contribute'}
+                {contributionMethod === 'instacart' ? 'Find store options above' : contributionMutation.isPending ? 'Saving...' : isAuthenticated ? 'Submit Contribution' : 'Sign in to contribute'}
               </button>
             </form>
           </div>
