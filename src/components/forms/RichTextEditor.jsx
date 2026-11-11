@@ -190,6 +190,7 @@ const RichTextEditor = ({ value = '', onChange, minHeight = 220 }) => {
         ref={editorRef}
         contentEditable
         role="textbox"
+        aria-label="Rich text content"
         aria-multiline="true"
         className="w-full px-3 py-3 text-sm text-slate-800 outline-none"
         style={{ minHeight }}

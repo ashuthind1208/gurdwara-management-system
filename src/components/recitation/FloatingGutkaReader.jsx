@@ -63,7 +63,8 @@ const FloatingGutkaReader = ({ placement = 'floating' }) => {
       if (!text || !page || !container.clientHeight) return;
       let size = FONT_SIZES[fontStep];
       text.style.fontSize = `${size}px`;
-      while (size > 10 && page.scrollHeight > container.clientHeight + 1) {
+      // Measure the rendered page so wrapped verses fit the actual reader pane.
+      while (size > 10 && page.scrollHeight > page.clientHeight + 1) {
         size -= 0.5;
         text.style.fontSize = `${size}px`;
       }

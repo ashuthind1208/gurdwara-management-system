@@ -1,12 +1,13 @@
 import contentApiService from './contentApiService';
 import { serviceResponse } from './serviceResponse';
-import { DEFAULT_HUKAMNAMA_SECONDS, DEFAULT_INTERVAL_SECONDS, HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, LED_BOARDS, LED_SCREENS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, SCREEN_ID_PATTERN } from '../constants/ledBoards';
+import { DEFAULT_HUKAMNAMA_SECONDS, DEFAULT_INTERVAL_SECONDS, DEFAULT_WELCOME_SECONDS, HUKAMNAMA_MAX_SECONDS, HUKAMNAMA_MIN_SECONDS, LED_BOARDS, LED_SCREENS, MAX_CUSTOM_SCREENS, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS, SCREEN_ID_PATTERN, WELCOME_MAX_SECONDS, WELCOME_MIN_SECONDS } from '../constants/ledBoards';
 
 const RESOURCE = 'led_board_settings';
 
 export const clampInterval = (value) => Math.min(MAX_INTERVAL_SECONDS, Math.max(MIN_INTERVAL_SECONDS, Math.round(Number(value) || DEFAULT_INTERVAL_SECONDS)));
 
 export const clampHukamnamaSeconds = (value) => Math.min(HUKAMNAMA_MAX_SECONDS, Math.max(HUKAMNAMA_MIN_SECONDS, Math.round(Number(value) || DEFAULT_HUKAMNAMA_SECONDS)));
+export const clampWelcomeSeconds = (value) => Math.min(WELCOME_MAX_SECONDS, Math.max(WELCOME_MIN_SECONDS, Math.round(Number(value) || DEFAULT_WELCOME_SECONDS)));
 
 const normalizeCustomScreens = (raw) => {
   const reserved = new Set(LED_SCREENS.map((screen) => screen.id));
@@ -28,6 +29,7 @@ export const normalizeSettings = (raw = {}) => {
     enabled: Object.fromEntries(LED_BOARDS.map((board) => [board.key, typeof raw?.enabled?.[board.key] === 'boolean' ? raw.enabled[board.key] : true])),
     intervalSeconds: clampInterval(raw?.intervalSeconds),
     hukamnamaSeconds: clampHukamnamaSeconds(raw?.hukamnamaSeconds),
+    welcomeSeconds: clampWelcomeSeconds(raw?.welcomeSeconds),
     customScreens,
     screenPlaylists: Object.fromEntries(Object.entries(raw?.screenPlaylists || {}).filter(([screen]) => knownScreens.has(screen)).map(([screen, keys]) => [screen, [...new Set((Array.isArray(keys) ? keys : []).filter((key) => LED_BOARDS.some((board) => board.key === key)))]])),
     festivalBannersEnabled: raw?.festivalBannersEnabled !== false,

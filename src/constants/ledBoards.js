@@ -8,7 +8,8 @@ export const LED_BOARDS = [
   { key: 'hukamnama', title: 'Daily Hukamnama Board', description: 'Today\'s hukamnama with translations, sized to fit the screen.', path: '/hukamnama-board', icon: BookOpenIcon, accent: 'border-orange-300 bg-orange-50 text-orange-800', hasOwnDuration: true },
   { key: 'granthi', title: 'Ask a Granthi Board', description: 'A public question screen for the sangat.', path: '/ask-a-granthi?screen=welcome', icon: SparklesIcon, accent: 'border-violet-300 bg-violet-50 text-violet-800' },
   { key: 'special', title: 'Special Events Board', description: 'Event photos and formatted announcements managed below.', path: '/special-events-board', icon: MegaphoneIcon, accent: 'border-rose-300 bg-rose-50 text-rose-800', isAnnouncementBoard: true },
-  { key: 'community', title: 'Community Announcements Board', description: 'Moderated bilingual community notices and services.', path: '/community-announcements-board', icon: MegaphoneIcon, accent: 'border-amber-300 bg-amber-50 text-amber-900' }
+  { key: 'community', title: 'Community Announcements Board', description: 'Moderated bilingual community notices and services.', path: '/community-announcements-board', icon: MegaphoneIcon, accent: 'border-amber-300 bg-amber-50 text-amber-900' },
+  { key: 'welcome', title: 'Sangat Welcome Journey', description: 'Welcome visitors with today’s program, langar, directions, and optional follow-up.', path: '/welcome-journey-board', icon: SparklesIcon, accent: 'border-cyan-300 bg-cyan-50 text-cyan-900', hasOwnDuration: true }
 ];
 
 export const LED_SCREENS = [
@@ -41,6 +42,10 @@ export const HUKAMNAMA_MIN_SECONDS = 10;
 export const HUKAMNAMA_MAX_SECONDS = 1800;
 export const DEFAULT_HUKAMNAMA_SECONDS = 60;
 export const HUKAMNAMA_PRESETS = [90, 120];
+export const WELCOME_MIN_SECONDS = 10;
+export const WELCOME_MAX_SECONDS = 300;
+export const DEFAULT_WELCOME_SECONDS = 30;
+export const WELCOME_PRESETS = [30, 45, 60];
 
 export const toEmbedSrc = (board) => {
   const url = new URL(board.path, window.location.origin);
@@ -51,14 +56,15 @@ export const toEmbedSrc = (board) => {
 
 // Builds the slide list the LED screen plays: enabled boards in order, with one slide per live announcement.
 // Boards with nothing to show (no announcements, no hukamnama posted yet) are skipped.
-export const buildLedSlides = (settings, { liveAnnouncements = [], hasHukamnama = false, screenId = 'main', festivalSlides = [] } = {}) => {
-  const selectedKeys = settings.screenPlaylists?.[screenId] || LED_BOARDS.filter((board) => settings.enabled[board.key]).map((board) => board.key);
+export const buildLedSlides = (settings, { liveAnnouncements = [], hasHukamnama = false, screenId = 'main', festivalSlides = [], welcomeJourneyEnabled = true } = {}) => {
+  const selectedKeys = [...(settings.screenPlaylists?.[screenId] || LED_BOARDS.filter((board) => settings.enabled[board.key]).map((board) => board.key))];
+  if (screenId === 'lobby' && settings.enabled.welcome && !selectedKeys.includes('welcome')) selectedKeys.push('welcome');
   const orderedBoards = selectedKeys.map((key) => LED_BOARDS.find((board) => board.key === key)).filter(Boolean);
   const slides = orderedBoards
-  .filter((board) => settings.enabled[board.key] && (board.key !== 'hukamnama' || hasHukamnama))
+  .filter((board) => settings.enabled[board.key] && (board.key !== 'hukamnama' || hasHukamnama) && (board.key !== 'welcome' || welcomeJourneyEnabled))
   .flatMap((board) => (board.isAnnouncementBoard
     ? liveAnnouncements.map((announcement) => ({ key: `announcement:${announcement.id}`, kind: 'announcement', label: `Special Event · ${announcement.title || 'Announcement'}`, announcement, durationSeconds: settings.intervalSeconds }))
-    : [{ key: `board:${board.key}`, kind: 'board', label: board.title, src: toEmbedSrc(board), durationSeconds: board.hasOwnDuration ? settings.hukamnamaSeconds : settings.intervalSeconds }]));
+    : [{ key: `board:${board.key}`, kind: 'board', label: board.title, src: toEmbedSrc(board), durationSeconds: board.key === 'hukamnama' ? (settings.hukamnamaSeconds || DEFAULT_HUKAMNAMA_SECONDS) : board.key === 'welcome' ? (settings.welcomeSeconds || DEFAULT_WELCOME_SECONDS) : settings.intervalSeconds } ]));
   if (settings.festivalBannersEnabled !== false) slides.push(...festivalSlides);
   return slides;
 };

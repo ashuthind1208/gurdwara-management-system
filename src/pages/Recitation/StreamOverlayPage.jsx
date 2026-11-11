@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRecitationLive, useRecitationText } from '../../hooks/useRecitation';
 import { BRANDING_PRESETS, useBranding } from '../../context/BrandingContext';
@@ -59,8 +59,12 @@ const StreamOverlayPage = () => {
   const hasTicker = Boolean(announcement || punjabiAnnouncement || upperEnglish || upperPunjabi);
   const [remoteVisible, setRemoteVisible] = useState(readStreamOverlayVisibility);
   const [clockNow, setClockNow] = useState(() => new Date());
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
+  const [centerBounds, setCenterBounds] = useState({ header: 'var(--overlay-header-height)', footer: 'var(--overlay-footer-height)' });
   const { currentIndex = 0 } = session || {};
   const line = lines[currentIndex] || null;
+  const hasRenderedFooter = Boolean(line || hasTicker);
   const selectedTheme = publishedSettings?.overlayThemeId === 'brand-colors'
     ? { primaryColor: '#004080', accentColor: '#F89820' }
     : BRANDING_PRESETS.find((preset) => preset.id === publishedSettings?.overlayThemeId);
@@ -76,6 +80,29 @@ const StreamOverlayPage = () => {
   }, []);
 
   useEffect(() => subscribeStreamOverlayVisibility(setRemoteVisible), []);
+
+  useEffect(() => {
+    const updateCenterBounds = () => {
+      const headerHeight = headerRef.current?.getBoundingClientRect().height;
+      const footerHeight = footerRef.current?.getBoundingClientRect().height;
+      setCenterBounds((current) => {
+        const header = Number.isFinite(headerHeight) && headerHeight > 0 ? `${headerHeight}px` : current.header;
+        const footer = footerRef.current
+          ? (Number.isFinite(footerHeight) && footerHeight > 0 ? `${footerHeight}px` : current.footer)
+          : '0px';
+        return header === current.header && footer === current.footer ? current : { header, footer };
+      });
+    };
+    updateCenterBounds();
+    window.addEventListener('resize', updateCenterBounds);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateCenterBounds);
+    if (headerRef.current) observer?.observe(headerRef.current);
+    if (footerRef.current) observer?.observe(footerRef.current);
+    return () => {
+      window.removeEventListener('resize', updateCenterBounds);
+      observer?.disconnect();
+    };
+  }, [hasRenderedFooter]);
 
   useEffect(() => {
     const body = document.body;
@@ -138,8 +165,8 @@ const StreamOverlayPage = () => {
         @media(max-aspect-ratio:4/3){.stream-overlay-root{--overlay-header-height:clamp(54px,10vh,88px);--overlay-footer-height:clamp(160px,30vh,300px)}.stream-overlay-header{padding:1vh 3vw;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}.stream-overlay-logo{width:clamp(42px,7vh,72px);height:clamp(42px,7vh,72px)}.stream-overlay-org{font-size:clamp(13px,2vw,19px)}.stream-overlay-address{font-size:clamp(9px,1.4vw,13px)}.stream-overlay-custom-header{font-size:clamp(14px,2.5vw,24px)}.stream-overlay-date{font-size:clamp(10px,1.8vw,15px)}.stream-overlay-time{font-size:clamp(15px,2.6vw,22px)}.stream-overlay-lines{padding-left:3vw;padding-right:3vw;gap:1vh}}
         .stream-overlay-root .stream-overlay-footer-ticker-only{min-height:0}
       `}</style>
-      <div className="stream-overlay-middle-background" aria-hidden="true" />
-      <header className="stream-overlay-header" aria-label="Gurdwara broadcast header">
+      <div className="stream-overlay-middle-background" aria-hidden="true" style={{ top: centerBounds.header, bottom: centerBounds.footer }} />
+      <header ref={headerRef} className="stream-overlay-header" aria-label="Gurdwara broadcast header">
         <div className="stream-overlay-identity">
           {showLogo ? <img className="stream-overlay-logo" src={logoSrc} alt="" /> : null}
           <div className="stream-overlay-org-block">
@@ -156,7 +183,7 @@ const StreamOverlayPage = () => {
           <p className="stream-overlay-time">{dateTime.time}</p>
         </div>
       </header>
-      {line || hasTicker ? <section className={`stream-overlay-footer${!line ? ' stream-overlay-footer-ticker-only' : ''}`} aria-label={line ? 'Live Gurbani broadcast footer' : 'Announcement ticker'}>
+      {hasRenderedFooter ? <section ref={footerRef} className={`stream-overlay-footer${!line ? ' stream-overlay-footer-ticker-only' : ''}`} aria-label={line ? 'Live Gurbani broadcast footer' : 'Announcement ticker'}>
         {line ? (
           <div className="stream-overlay-lines">
             {showGurmukhi ? <p className="stream-overlay-g">{line.g}</p> : null}
