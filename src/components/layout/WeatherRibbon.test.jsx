@@ -29,15 +29,15 @@ beforeEach(() => {
   weatherService.getForAddress.mockResolvedValue(forecast);
 });
 
-test('shows only a compact icon and temperature until the weather ribbon is opened', async () => {
+test('shows compact weather information without repeating the address in the top ribbon', async () => {
   setup();
   const trigger = await screen.findByRole('button', { name: /Gurdwara weather: Partly cloudy, 18 degrees Celsius/ });
   expect(trigger).toHaveTextContent('18°');
   expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  expect(trigger).toHaveClass('text-sm', 'font-bold');
-  // The compact weather control is hidden on phones and displayed from tablet widths.
+  expect(trigger).toHaveClass('text-[11px]', 'font-bold');
+  // Keep the weather control visible at all widths.
   // eslint-disable-next-line testing-library/no-node-access
-  expect(trigger.parentElement).toHaveClass('hidden', 'md:block');
+  expect(trigger.parentElement).not.toHaveClass('hidden');
 
   await userEvent.hover(trigger);
   expect(await screen.findByText('Weather at the Gurdwara')).toBeInTheDocument();

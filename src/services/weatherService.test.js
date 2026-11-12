@@ -22,6 +22,18 @@ test('derives a geocoder-friendly Canadian locality from a street address', () =
     '123 Example Road, Toronto ON, Canada'
   ]);
   expect(buildGeocodingQueries('Toronto, Ontario')).toContain('Toronto, Ontario, Canada');
+  expect(buildGeocodingQueries('7035 Sixth Line, Milton, L9T 7L6')).toContain('Milton, Canada');
+  expect(buildGeocodingQueries('7035 Sixth Line, Milton ON, L9T 7L6')).toContain('Milton, ON, Canada');
+});
+
+test('uses locality instead of postal code when an address lookup fails', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+    .mockResolvedValueOnce({ ok: true, json: async () => geocodeResult })
+    .mockResolvedValueOnce({ ok: true, json: async () => forecastResult });
+  await weatherService.getForAddress('7035 Sixth Line, Milton, L9T 7L6');
+  expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('name')).toBe('7035 Sixth Line, Milton, L9T 7L6');
+  expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('name')).toBe('Milton, Canada');
 });
 
 test('falls back from an unrecognized street address and returns local forecast and sun times', async () => {

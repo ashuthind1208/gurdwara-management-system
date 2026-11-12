@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Card from '../../components/ui/Card';
@@ -23,14 +23,21 @@ const AdminGurdwaraBrandingPage = () => {
   const [themeName, setThemeName] = useState('');
   const [selectedSavedThemeId, setSelectedSavedThemeId] = useState('');
   const form = useForm({ defaultValues: DEFAULT_GURDWARA_BRANDING });
-  const { data, error: brandingLoadError } = useQuery({
+  const { reset: resetForm } = form;
+  const resetFormRef = useRef(resetForm);
+  resetFormRef.current = resetForm;
+  const brandingInitializedRef = useRef(false);
+  const { data, error: brandingLoadError, isLoading: brandingLoading } = useQuery({
     queryKey: ['gurdwara-branding'],
     queryFn: () => brandingService.getBranding().then((response) => response.data)
   });
 
   useEffect(() => {
-    if (data) form.reset({ ...DEFAULT_GURDWARA_BRANDING, ...data });
-  }, [data, form]);
+    if (data && !brandingInitializedRef.current) {
+      resetFormRef.current({ ...DEFAULT_GURDWARA_BRANDING, ...data });
+      brandingInitializedRef.current = true;
+    }
+  }, [data]);
 
   const saveMutation = useMutation({
     mutationFn: ({ values, section }) => {
@@ -49,7 +56,8 @@ const AdminGurdwaraBrandingPage = () => {
         ...Object.fromEntries(['footerColor', 'textColor', 'buttonColor', 'buttonHoverColor', 'linkColor', 'linkHoverColor', 'tagline', 'faviconUrl', 'headingFont', 'bodyFont', 'cornerStyle', 'logoShape', ...CONTACT_FIELDS].map((key) => [key, String(merged[key] || '').trim()]))
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      queryClient.setQueryData(['gurdwara-branding'], response?.data || response);
       queryClient.invalidateQueries({ queryKey: ['gurdwara-branding'] });
       queryClient.invalidateQueries({ queryKey: ['ask-granthi-board'] });
     }
@@ -95,6 +103,10 @@ const AdminGurdwaraBrandingPage = () => {
   };
 
   const saveSection = (section) => form.handleSubmit((payload) => saveMutation.mutate({ values: payload, section }))();
+  const saveContactSection = () => {
+    if (brandingLoading || brandingLoadError) return;
+    saveMutation.mutate({ values: form.getValues(), section: 'contact' });
+  };
   const renderSaveStatus = (section) => {
     if (saveMutation.variables?.section !== section) return null;
     if (saveMutation.isError) return <p role="alert" className="mb-3 w-full whitespace-nowrap rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{saveMutation.error?.response?.data?.message || saveMutation.error?.message || 'Unable to save. Check the entered details.'}</p>;
@@ -230,9 +242,10 @@ const AdminGurdwaraBrandingPage = () => {
               </div>
             </section>
 
-            <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2"><legend className="px-1 text-sm font-semibold text-slate-700">Contact and social links</legend>
+            <fieldset disabled={brandingLoading} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 disabled:opacity-70"><legend className="px-1 text-sm font-semibold text-slate-700">Contact and social links</legend>
+              <p className="text-xs text-slate-500 sm:col-span-2">The address feeds the local-weather lookup in the website ribbon.</p>
               {[['address', 'Address', 'text'], ['phone', 'Phone', 'text'], ['email', 'Email', 'email'], ['facebookUrl', 'Facebook URL', 'url'], ['instagramUrl', 'Instagram URL', 'url'], ['youtubeUrl', 'YouTube URL', 'url']].map(([field, label, type]) => <label key={field} className="text-xs font-semibold text-slate-600">{label}<input type={type} {...form.register(field)} className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-normal" /></label>)}
-              <div className="sm:col-span-2">{renderSaveStatus('contact')}<div className="flex justify-end"><Button type="button" variant="secondary" onClick={() => saveSection('contact')} disabled={saveMutation.isPending}>{saveMutation.isPending && saveMutation.variables?.section === 'contact' ? 'Saving…' : 'Save contact information'}</Button></div></div>
+              <div className="sm:col-span-2">{brandingLoadError ? <p role="alert" className="mb-3 text-xs text-red-700">Saved branding could not be loaded. Reload before saving contact details.</p> : null}{renderSaveStatus('contact')}<div className="flex justify-end"><Button type="button" variant="secondary" onClick={saveContactSection} disabled={brandingLoading || Boolean(brandingLoadError) || saveMutation.isPending}>{saveMutation.isPending && saveMutation.variables?.section === 'contact' ? 'Saving…' : 'Save contact information'}</Button></div></div>
             </fieldset>
             {brandingLoadError ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">Unable to load saved branding. Defaults are shown until the API is available.</p> : null}
 
