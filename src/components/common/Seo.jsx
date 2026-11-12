@@ -1,7 +1,10 @@
 import { Helmet } from 'react-helmet-async';
 import { siteConfig } from '../../constants/siteConfig';
+import { useBranding } from '../../context/BrandingContext';
 
 const Seo = ({ title, description, canonical, image }) => {
+  const { branding } = useBranding();
+  const address = branding.address || siteConfig.contact.address;
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'HinduTemple',
@@ -11,7 +14,7 @@ const Seo = ({ title, description, canonical, image }) => {
     email: siteConfig.contact.email,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: siteConfig.contact.address
+      streetAddress: address
     }
   };
 

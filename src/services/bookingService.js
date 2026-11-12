@@ -132,10 +132,10 @@ const toDisplayLabel = (value, fallback = '-') => {
     : fallback;
 };
 
-const buildReceiptAttachment = async (booking = {}) => {
+const buildReceiptAttachment = async (booking = {}, address = '') => {
   const blob = await createBookingReceiptPdfBlob({
     organizationName: siteConfig.name,
-    address: siteConfig.contact.address,
+    address: String(address || siteConfig.contact.address).trim(),
     phone: siteConfig.contact.phone,
     email: siteConfig.contact.email,
     booking
@@ -263,15 +263,15 @@ const bookingService = {
     return serviceResponse(response.data?.data || {});
   },
 
-  downloadInvoice: (booking = {}) => downloadBookingReceiptPdf({
+  downloadInvoice: (booking = {}, address = '') => downloadBookingReceiptPdf({
     organizationName: siteConfig.name,
-    address: siteConfig.contact.address,
+    address: String(address || siteConfig.contact.address).trim(),
     phone: siteConfig.contact.phone,
     email: siteConfig.contact.email,
     booking
   }),
 
-  sendBookingConfirmationEmail: async (booking = {}) => {
+  sendBookingConfirmationEmail: async (booking = {}, address = '') => {
     const bookingItemsLabel = getBookingItemsLabel(booking);
     const targetEmail = String(booking.requesterEmail || '').trim().toLowerCase();
     if (!targetEmail) {
@@ -284,7 +284,8 @@ const bookingService = {
       '/api/internal/mail-relay'
     ).trim();
 
-    const attachment = await buildReceiptAttachment(booking);
+    const savedAddress = String(address || siteConfig.contact.address).trim();
+    const attachment = await buildReceiptAttachment(booking, savedAddress);
     const details = [
       ['Booking Type', bookingItemsLabel || '-'],
       ['Date and Time', `${booking.date || '-'}, ${booking.startTime || '-'} - ${booking.endTime || '-'}`],
@@ -302,7 +303,7 @@ const bookingService = {
           <tr><td style="padding:24px;"><p style="font-size:17px;font-weight:700;">Dear ${escapeHtml(booking.requesterName || 'Sangat Member')},</p><p style="color:#334155;line-height:1.7;">Your booking details are shown below. A PDF receipt is attached for your records.</p>
             <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border:1px solid #d7e3f3;border-radius:10px;overflow:hidden;">${details.map(([label, value]) => `<tr><td style="width:34%;padding:11px 12px;background:#eef5ff;border-bottom:1px solid #d7e3f3;font-weight:700;color:#0a4d9f;">${escapeHtml(label)}</td><td style="padding:11px 12px;border-bottom:1px solid #d7e3f3;font-weight:700;">${escapeHtml(value)}</td></tr>`).join('')}</table>
             <p style="margin-top:18px;color:#475569;line-height:1.7;">Please contact the Gurdwara office if any details need to be changed.</p>
-            <div style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:12px;line-height:1.8;color:#64748b;"><strong>${escapeHtml(siteConfig.name)}</strong><br/>${escapeHtml(siteConfig.contact.address)}<br/>${escapeHtml(siteConfig.contact.phone)} | ${escapeHtml(siteConfig.contact.email)}</div>
+            <div style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:12px;line-height:1.8;color:#64748b;"><strong>${escapeHtml(siteConfig.name)}</strong><br/>${escapeHtml(savedAddress)}<br/>${escapeHtml(siteConfig.contact.phone)} | ${escapeHtml(siteConfig.contact.email)}</div>
           </td></tr>
         </table>
       </div>

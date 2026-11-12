@@ -3423,7 +3423,7 @@ const sendEventReminderEmail = async (registration, options = {}) => {
   }
 };
 
-const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promoted = false }) => {
+const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promoted = false, branding = {} }) => {
   const isSeva = kind === 'seva';
   const status = String(registration.status || 'confirmed').trim().toLowerCase();
   const isWaitlisted = status === 'waitlisted';
@@ -3483,7 +3483,7 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
     `Contact: ${contactUrl}`,
     '',
     volunteerReminderSiteName,
-    defaultOrganizationContactLine
+    [branding.address, branding.phone, branding.email].filter(Boolean).join(' | ')
   ].join('\n');
   const rowsHtml = detailRows.map(([label, value], index) => `
             <tr>
@@ -3508,9 +3508,9 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
         <div style="margin-top:16px;"><a href="${escapeHtml(detailsUrl)}" style="display:inline-block;border-radius:8px;background:#0b67c2;padding:11px 16px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;">View ${escapeHtml(typeLabel)} Details</a></div>
         <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:12px;line-height:1.8;color:#64748b;">
           <div style="font-weight:700;color:#334155;">${escapeHtml(volunteerReminderSiteName)}</div>
-          ${defaultOrganizationAddress ? `<div>${escapeHtml(defaultOrganizationAddress)}</div>` : ''}
-          ${defaultOrganizationPhone ? `<div>${escapeHtml(defaultOrganizationPhone)}</div>` : ''}
-          ${defaultOrganizationEmail ? `<div><a href="mailto:${escapeHtml(defaultOrganizationEmail)}" style="color:#0b67c2;text-decoration:none;">${escapeHtml(defaultOrganizationEmail)}</a></div>` : ''}
+          ${branding.address ? `<div>${escapeHtml(branding.address)}</div>` : ''}
+          ${branding.phone ? `<div>${escapeHtml(branding.phone)}</div>` : ''}
+          ${branding.email ? `<div><a href="mailto:${escapeHtml(branding.email)}" style="color:#0b67c2;text-decoration:none;">${escapeHtml(branding.email)}</a></div>` : ''}
           <div><a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;text-decoration:none;">Contact us</a></div>
         </div>
       </td></tr>
@@ -3526,7 +3526,8 @@ const sendRegistrationStatusEmail = async ({ registration, kind, promoted = fals
     return { sent: false, reason: 'invalid_email' };
   }
 
-  const template = buildRegistrationStatusEmail({ registration, kind, promoted });
+  const branding = await getGurdwaraBranding(eventsDb);
+  const template = buildRegistrationStatusEmail({ registration, kind, promoted, branding });
   try {
     const response = await deliverWorkflowEmail(kind === 'seva' ? volunteerReminderWebhookUrl : eventReminderWebhookUrl, {
         type: `${kind}-registration-${promoted ? 'promoted' : 'acknowledgement'}`,
@@ -4053,7 +4054,7 @@ const runScheduledEventReminderSweep = async () => {
   return result;
 };
 
-const normalizeBookingForNotification = (entry = {}) => ({
+const normalizeBookingForNotification = (entry = {}, branding = {}) => ({
   ...entry,
   id: String(entry.id || '').trim(),
   requesterName: String(entry.requesterName || 'Sangat Member').trim(),
@@ -4080,7 +4081,7 @@ const normalizeBookingForNotification = (entry = {}) => ({
   endTime: String(entry.endTime || '').trim(),
   bookingVenueType: getBookingVenueType(entry),
   hidePublicLocation: entry.hidePublicLocation === true,
-  bookingLocation: String(entry.bookingLocation || entry.location || defaultOrganizationName).trim(),
+  bookingLocation: String(entry.bookingLocation || entry.location || `${branding.organizationName || defaultOrganizationName}${branding.address ? `, ${branding.address}` : ''}`).trim(),
   status: String(entry.status || '').trim().toLowerCase() === 'completed'
     ? 'confirmed'
     : String(entry.status || 'pending').trim().toLowerCase(),
@@ -4419,8 +4420,8 @@ const toBookingDisplayLabel = (value, fallback = '-') => {
     : fallback;
 };
 
-const buildBookingReceiptPdfAttachment = (booking = {}) => {
-  const normalized = normalizeBookingForNotification(booking);
+const buildBookingReceiptPdfAttachment = (booking = {}, branding = {}) => {
+  const normalized = normalizeBookingForNotification(booking, branding);
   const isRefundReleased = normalized.status === 'cancelled' && normalized.refundStatus === 'processed';
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -4441,11 +4442,11 @@ const buildBookingReceiptPdfAttachment = (booking = {}) => {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text(volunteerReminderSiteName, 112, 42);
+  doc.text(String(branding.organizationName || volunteerReminderSiteName), 112, 42);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  if (defaultOrganizationAddress) doc.text(defaultOrganizationAddress, 112, 60);
-  const organizationContacts = [defaultOrganizationPhone, defaultOrganizationEmail].filter(Boolean).join(' | ');
+  if (branding.address) doc.text(String(branding.address), 112, 60);
+  const organizationContacts = [branding.phone, branding.email].filter(Boolean).join(' | ');
   if (organizationContacts) doc.text(organizationContacts, 112, 77);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(isRefundReleased ? 15 : 18);
@@ -4522,8 +4523,8 @@ const buildBookingReceiptPdfAttachment = (booking = {}) => {
   };
 };
 
-const buildBookingNotificationEmail = ({ booking, daysRemaining = null, changeType = 'updated' }) => {
-  const normalized = normalizeBookingForNotification(booking);
+const buildBookingNotificationEmail = ({ booking, daysRemaining = null, changeType = 'updated', branding = {} }) => {
+  const normalized = normalizeBookingForNotification(booking, branding);
   const isReminder = Number.isFinite(daysRemaining);
   const isPaid = normalized.paymentStatus === 'paid';
   const isCancelled = normalized.status === 'cancelled';
@@ -6424,6 +6425,7 @@ const ledScreenService = createLedScreenService({
 const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson });
 const welcomeJourneyHandler = createWelcomeJourneyHandler({
   eventsDb,
+  getGurdwaraBranding,
   getRequestActor,
   parseJsonObjectBody,
   sendJson,

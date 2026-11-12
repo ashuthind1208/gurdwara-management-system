@@ -30,6 +30,7 @@ import donationService from '../../services/donationService';
 import eventService from '../../services/eventService';
 import contentApiService from '../../services/contentApiService';
 import { useAuth } from '../../context/AuthContext';
+import { useBranding } from '../../context/BrandingContext';
 import { downloadBookingRevenueCsv, downloadBookingRevenuePdf } from '../../utils/csvExport';
 
 const BOOKINGS_PAGE_SIZE = 10;
@@ -258,6 +259,7 @@ const refundBadgeClass = (status) => {
 const AdminBookingsPage = () => {
   const { setHeaderAction } = useOutletContext();
   const { user } = useAuth();
+  const { branding } = useBranding();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [guidelinesDraft, setGuidelinesDraft] = useState({ guidelines: '', donationCampaignId: '', showCreateBookingButton: true });
@@ -565,7 +567,7 @@ const AdminBookingsPage = () => {
   });
 
   const emailMutation = useMutation({
-    mutationFn: (booking) => bookingService.sendBookingConfirmationEmail(booking).then((res) => res.data),
+    mutationFn: (booking) => bookingService.sendBookingConfirmationEmail(booking, branding.address).then((res) => res.data),
     onSuccess: (_, booking) => {
       window.alert(`Booking receipt emailed to ${booking?.requesterEmail || booking?.requesterName || 'the requester'}.`);
     },
@@ -696,7 +698,7 @@ const AdminBookingsPage = () => {
         ...current.booking,
         requesterAddress: address,
         bookingVenueType: hasAddress ? 'residence' : 'gurdwara',
-        bookingLocation: hasAddress ? address : ''
+        bookingLocation: hasAddress ? address : `${branding.organizationName || 'Gurdwara'}${branding.address ? `, ${branding.address}` : ''}`
       }
     }));
   };
@@ -972,7 +974,7 @@ const AdminBookingsPage = () => {
         startTime: '10:00',
         endTime: '11:00',
         occasionType: '',
-        bookingLocation: '',
+        bookingLocation: `${branding.organizationName || 'Gurdwara'}${branding.address ? `, ${branding.address}` : ''}`,
         bookingVenueType: 'gurdwara',
         hidePublicLocation: true,
         requesterName: '',
@@ -995,7 +997,7 @@ const AdminBookingsPage = () => {
     });
     setBookingFormError('');
     setBookingCalendarOpen(false);
-  }, []);
+  }, [branding.address, branding.organizationName]);
 
   useEffect(() => {
     setHeaderAction(<AdminHeaderActionButton label="Add Bookings" onClick={openManualBooking} />);
@@ -1142,7 +1144,7 @@ const AdminBookingsPage = () => {
                     <button type="button" onClick={() => { setBookingFormError(''); setBookingModal({ open: true, mode: 'edit', booking: { ...row, toDate: row.toDate || row.date } }); }} className={iconButtonClass} title="Edit booking" aria-label="Edit booking"><PencilSquareIcon className="h-4 w-4" /></button>
                     <button type="button" onClick={() => openStatusModal(row)} className={iconButtonClass} title="Update status" aria-label="Update booking status"><ArrowsRightLeftIcon className="h-4 w-4" /></button>
                     {row.status === 'cancelled' && (row.refundStatus || ['paid', 'partial', 'refunded'].includes(String(row.paymentStatus || '').toLowerCase())) ? <button type="button" onClick={() => openRefundModal(row)} className={`${iconButtonClass} text-emerald-700`} title="Update refund status" aria-label="Update refund status"><ArrowUturnLeftIcon className="h-4 w-4" /></button> : null}
-                    <button type="button" onClick={() => bookingService.downloadInvoice(row)} className={iconButtonClass} title="Download invoice" aria-label="Download invoice"><ArrowDownTrayIcon className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => bookingService.downloadInvoice(row, branding.address)} className={iconButtonClass} title="Download invoice" aria-label="Download invoice"><ArrowDownTrayIcon className="h-4 w-4" /></button>
                     <button type="button" onClick={() => emailMutation.mutate(row)} disabled={emailMutation.isPending} className={iconButtonClass} title="Email receipt" aria-label="Email receipt"><EnvelopeIcon className="h-4 w-4" /></button>
                     <button type="button" onClick={() => window.confirm('Delete this booking?') && deleteMutation.mutate(row.id)} className={`${iconButtonClass} text-rose-600`} title="Delete booking" aria-label="Delete booking"><TrashIcon className="h-4 w-4" /></button>
                   </div></td>

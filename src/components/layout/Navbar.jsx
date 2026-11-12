@@ -2030,7 +2030,7 @@ const Navbar = () => {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(219, 234, 254);
     doc.setFontSize(9.5);
-    doc.text(siteConfig.contact.address, 34, 20);
+    doc.text(branding.address || siteConfig.contact.address, 34, 20);
     doc.text(siteConfig.contact.phone, 34, 25);
 
     doc.setFont(hasGurmukhiFont ? 'NotoSansGurmukhi' : 'helvetica', 'bold');
@@ -2426,7 +2426,7 @@ const Navbar = () => {
       <div className="hidden border-b border-brand-saffron/30 bg-[color:var(--theme-darker,#0a1a33)] px-4 py-0.5 text-xs text-white/90 xl:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between md:px-2">
           <div className="flex items-center gap-2">
-            <p>{siteConfig.contact.address}</p>
+            <p>{branding.address || siteConfig.contact.address}</p>
             {hasWhatsAppGroup || socialLinks.length > 0 ? (
               <>
                 <div className="flex items-center gap-2" aria-label="Social media links">

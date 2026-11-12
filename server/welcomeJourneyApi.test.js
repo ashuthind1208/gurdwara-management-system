@@ -8,12 +8,13 @@ const adminHeaders = { authorization: 'Bearer live-google-access-token', 'x-acto
 const settingsPath = '/api/welcome-journey/settings';
 const followUpsPath = '/api/welcome-journey/follow-ups';
 
-const createHarness = ({ users = [adminUser], verifiedProfile = { email: adminUser.email, email_verified: true }, storedSettings = null } = {}) => {
+const createHarness = ({ users = [adminUser], verifiedProfile = { email: adminUser.email, email_verified: true }, storedSettings = null, branding = {} } = {}) => {
   const writes = [];
   const followUps = [];
   const audits = [];
   let settings = storedSettings;
   const handler = createWelcomeJourneyHandler({
+    getGurdwaraBranding: async () => branding,
     eventsDb: {
       hasDatabaseConnection: true,
       listItems: async (resource) => resource === 'users' ? users : followUps,
@@ -36,6 +37,18 @@ const createHarness = ({ users = [adminUser], verifiedProfile = { email: adminUs
     }
   };
 };
+
+test('saved Gurdwara branding address overrides an older Welcome Journey address and directions URL', async () => {
+  const savedAddress = '7035 Sixth Line, Milton, L9T 7L6';
+  const api = createHarness({
+    storedSettings: { ...DEFAULT_WELCOME_JOURNEY_SETTINGS, address: 'Old address', directionsUrl: 'https://maps.google.com/?q=old-address' },
+    branding: { address: savedAddress }
+  });
+  const result = await api.request(settingsPath);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.data.address, savedAddress);
+  assert.equal(result.body.data.directionsUrl, `https://maps.google.com/?q=${encodeURIComponent(savedAddress)}`);
+});
 
 test('public settings use safe defaults and the existing admin portal token authorizes an approved account', async () => {
   const api = createHarness();

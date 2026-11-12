@@ -398,6 +398,9 @@ const BookingsPage = () => {
       ...prev,
       date: prev.date || selectedDateKey,
       toDate: prev.toDate || prev.date || selectedDateKey,
+      bookingLocation: prev.bookingVenueType === 'gurdwara'
+        ? (branding.address || prev.bookingLocation || '')
+        : prev.bookingLocation,
       requesterName: prev.bookingForDifferentPerson ? prev.requesterName : bookingDefaults.requesterName,
       requesterEmail: prev.bookingForDifferentPerson ? prev.requesterEmail : bookingDefaults.requesterEmail,
       requesterPhone: prev.bookingForDifferentPerson ? prev.requesterPhone : bookingDefaults.requesterPhone,

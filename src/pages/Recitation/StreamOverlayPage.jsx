@@ -131,7 +131,7 @@ const StreamOverlayPage = () => {
   const showPunjabi = languages.includes('p') && Boolean(line?.p);
   const showEnglish = languages.includes('e') && Boolean(line?.e);
   const organizationName = String(branding.organizationName || 'Gurdwara Singh Sabha').replace(/\s+Milton$/i, '').trim();
-  const organizationAddress = branding.address || '7035, Sixth Line, Milton';
+  const organizationAddress = branding.address || '';
 
   return (
     <main
