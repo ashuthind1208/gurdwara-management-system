@@ -23,6 +23,12 @@ test('uses the configured number of seconds for slide rotation', () => {
   intervalSpy.mockRestore();
 });
 
+test('aligns hero text with the inner content column used by the home cards', () => {
+  render(<BrowserRouter><HomeHeroBanner content={{ title: 'Aligned hero', slides: [{ title: 'Aligned hero', image: '/hero.jpg' }] }} /></BrowserRouter>);
+  expect(screen.getByTestId('home-hero-text')).toHaveClass('pl-5', 'w-full');
+  expect(screen.getByTestId('home-hero-content-container')).toHaveClass('max-w-7xl', 'mx-auto', 'px-4', 'md:px-6');
+});
+
 test('advances to the next hero slide when the active upload is missing', () => {
   render(
     <BrowserRouter>
@@ -52,6 +58,6 @@ test('advances to the next hero slide when the active upload is missing', () => 
   fireEvent.load(availableImage);
   expect(availableImage).toHaveStyle({ display: 'block' });
   expect(screen.queryByRole('button', { name: 'Show slide 1' })).not.toBeInTheDocument();
-  expect(availableImage.nextElementSibling).toHaveClass('bg-black/70');
-  expect(availableImage.nextElementSibling).not.toHaveClass('hidden');
+  expect(screen.getByTestId('home-hero-overlay')).toHaveClass('bg-black/70');
+  expect(screen.getByTestId('home-hero-overlay')).not.toHaveClass('hidden');
 });

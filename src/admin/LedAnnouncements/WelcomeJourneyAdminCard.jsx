@@ -60,7 +60,7 @@ const WelcomeJourneyAdminCard = () => {
   const removeDish = (id) => setValues((current) => ({ ...current, dishes: current.dishes.filter((dish) => dish.id !== id), selectedDishIds: current.selectedDishIds.filter((selected) => selected !== id) }));
   const submit = (event) => {
     event.preventDefault();
-    const { canSave, followUpAvailable, ...editableSettings } = values;
+    const { canSave, canSaveReason, followUpAvailable, ...editableSettings } = values;
     mutation.mutate(editableSettings);
   };
   const reauthenticate = async () => {

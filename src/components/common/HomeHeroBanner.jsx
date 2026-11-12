@@ -98,7 +98,7 @@ const HomeHeroBanner = ({ content, actions, topRightSlot, onSlideAction }) => {
           onError={() => handleSlideImageError(index)}
         />
 
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-black/70" />
+        <div data-testid="home-hero-overlay" className="pointer-events-none absolute inset-0 z-[2] bg-black/70" />
       </div>
 
       {topRightSlot ? (
@@ -107,7 +107,9 @@ const HomeHeroBanner = ({ content, actions, topRightSlot, onSlideAction }) => {
         </div>
       ) : null}
 
-      <div className="absolute inset-0 z-10 flex flex-col items-start justify-end p-6 pb-8 text-white md:p-10 md:pb-12">
+      <div className="absolute inset-0 z-10 text-white">
+        <div data-testid="home-hero-content-container" className="mx-auto flex h-full w-full max-w-7xl flex-col items-start justify-end px-4 pb-8 md:px-6 md:pb-12">
+          <div data-testid="home-hero-text" className="w-full pl-5">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-saffron drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">{activeEyebrow}</p>
         <h1 className="mt-3 max-w-3xl font-heading text-3xl font-bold leading-tight text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.85)] md:text-5xl">{activeTitle}</h1>
         <p className="mt-3 max-w-3xl text-sm text-blue-50 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] md:text-base">{activeDescription}</p>
@@ -145,6 +147,8 @@ const HomeHeroBanner = ({ content, actions, topRightSlot, onSlideAction }) => {
             ) : null}
           </div>
         ) : null}
+          </div>
+        </div>
       </div>
 
       {isHomeRoute && slides.length > 1 ? (
