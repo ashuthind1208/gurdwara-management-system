@@ -16,6 +16,17 @@ beforeEach(() => {
 
 const setup = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><WelcomeJourneyAdminCard /></QueryClientProvider>);
 
+test('explains that visitor and LED colors follow branding instead of offering a theme selector', async () => {
+  welcomeJourneyService.getSettings.mockResolvedValue({ theme: 'heritage', dishes: [], selectedDishIds: [] });
+  setup();
+  expect(await screen.findByText('Visitor page and LED board colors follow Gurdwara Branding.')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save Welcome Journey' })).toBeEnabled());
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Save Welcome Journey' }));
+  await screen.findByText('Welcome Journey settings saved.');
+  expect(welcomeJourneyService.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ theme: 'heritage' }));
+});
+
 test('reuses saved dishes without removing unchecked dishes from the library', async () => {
   setup();
   const checkbox = await screen.findByRole('checkbox', { name: 'Serve Dal today' });

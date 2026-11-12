@@ -1628,9 +1628,11 @@ const listItems = async (resource) => {
     }));
   }
 
+  // Audit tables show metadata only; keep the stored content snapshot unchanged.
+  const payloadProjection = normalizedResource === 'audit_logs' ? "payload - 'payload' AS payload" : 'payload';
   const result = await pool.query(
     `
-    SELECT id, payload
+    SELECT id, ${payloadProjection}
     FROM app_items
     WHERE resource = $1
     ORDER BY updated_at DESC;
