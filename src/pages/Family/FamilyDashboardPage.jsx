@@ -8,6 +8,7 @@ import Seo from '../../components/common/Seo';
 import PageHero from '../../components/common/PageHero';
 import useSeoMeta from '../../hooks/useSeoMeta';
 import { useAuth } from '../../context/AuthContext';
+import { useBranding } from '../../context/BrandingContext';
 import eventService from '../../services/eventService';
 import donationService from '../../services/donationService';
 import volunteerService from '../../services/volunteerService';
@@ -142,6 +143,7 @@ const BookingHistoryRows = ({ bookings, onView, emptyMessage }) => (
 const FamilyDashboardPage = () => {
   const meta = useSeoMeta('Family Dashboard', 'Track your family event RSVPs, waitlists, seva applications, and donations in one view.');
   const { user, isAuthenticated } = useAuth();
+  const { branding } = useBranding();
   const queryClient = useQueryClient();
   const [donationPage, setDonationPage] = useState(1);
   const [calendarNotice, setCalendarNotice] = useState({ type: '', message: '' });
@@ -461,7 +463,7 @@ const FamilyDashboardPage = () => {
     void downloadDonationInvoicePdf({
       fileName: `invoice-${entry.receiptId || entry.id}.pdf`,
       organizationName: siteConfig.name,
-      address: siteConfig.contact.address,
+      address: branding.address || siteConfig.contact.address,
       phone: siteConfig.contact.phone,
       donation: entry,
       campaignDescription: ''
@@ -472,7 +474,7 @@ const FamilyDashboardPage = () => {
     void downloadMembershipFeeInformationPdf({
       user: { ...user, membershipFeeRecords: [entry] },
       organizationName: siteConfig.name,
-      address: siteConfig.contact.address,
+      address: branding.address || siteConfig.contact.address,
       phone: siteConfig.contact.phone,
       email: siteConfig.contact.email
     }).catch(() => null);

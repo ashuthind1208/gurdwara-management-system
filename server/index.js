@@ -3392,7 +3392,7 @@ const sendEventReminderEmail = async (registration, options = {}) => {
   }
 };
 
-const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promoted = false }) => {
+const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promoted = false, branding = {} }) => {
   const isSeva = kind === 'seva';
   const status = String(registration.status || 'confirmed').trim().toLowerCase();
   const isWaitlisted = status === 'waitlisted';
@@ -3452,7 +3452,7 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
     `Contact: ${contactUrl}`,
     '',
     volunteerReminderSiteName,
-    defaultOrganizationContactLine
+    [branding.address, branding.phone, branding.email].filter(Boolean).join(' | ')
   ].join('\n');
   const rowsHtml = detailRows.map(([label, value], index) => `
             <tr>
@@ -3477,9 +3477,9 @@ const buildRegistrationStatusEmail = ({ registration = {}, kind = 'event', promo
         <div style="margin-top:16px;"><a href="${escapeHtml(detailsUrl)}" style="display:inline-block;border-radius:8px;background:#0b67c2;padding:11px 16px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;">View ${escapeHtml(typeLabel)} Details</a></div>
         <div style="margin-top:18px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:12px;line-height:1.8;color:#64748b;">
           <div style="font-weight:700;color:#334155;">${escapeHtml(volunteerReminderSiteName)}</div>
-          ${defaultOrganizationAddress ? `<div>${escapeHtml(defaultOrganizationAddress)}</div>` : ''}
-          ${defaultOrganizationPhone ? `<div>${escapeHtml(defaultOrganizationPhone)}</div>` : ''}
-          ${defaultOrganizationEmail ? `<div><a href="mailto:${escapeHtml(defaultOrganizationEmail)}" style="color:#0b67c2;text-decoration:none;">${escapeHtml(defaultOrganizationEmail)}</a></div>` : ''}
+          ${branding.address ? `<div>${escapeHtml(branding.address)}</div>` : ''}
+          ${branding.phone ? `<div>${escapeHtml(branding.phone)}</div>` : ''}
+          ${branding.email ? `<div><a href="mailto:${escapeHtml(branding.email)}" style="color:#0b67c2;text-decoration:none;">${escapeHtml(branding.email)}</a></div>` : ''}
           <div><a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;text-decoration:none;">Contact us</a></div>
         </div>
       </td></tr>
@@ -3495,7 +3495,8 @@ const sendRegistrationStatusEmail = async ({ registration, kind, promoted = fals
     return { sent: false, reason: 'invalid_email' };
   }
 
-  const template = buildRegistrationStatusEmail({ registration, kind, promoted });
+  const branding = await getGurdwaraBranding(eventsDb);
+  const template = buildRegistrationStatusEmail({ registration, kind, promoted, branding });
   try {
     const response = await deliverWorkflowEmail(kind === 'seva' ? volunteerReminderWebhookUrl : eventReminderWebhookUrl, {
         type: `${kind}-registration-${promoted ? 'promoted' : 'acknowledgement'}`,
@@ -4022,7 +4023,7 @@ const runScheduledEventReminderSweep = async () => {
   return result;
 };
 
-const normalizeBookingForNotification = (entry = {}) => ({
+const normalizeBookingForNotification = (entry = {}, branding = {}) => ({
   ...entry,
   id: String(entry.id || '').trim(),
   requesterName: String(entry.requesterName || 'Sangat Member').trim(),
@@ -4049,7 +4050,7 @@ const normalizeBookingForNotification = (entry = {}) => ({
   endTime: String(entry.endTime || '').trim(),
   bookingVenueType: getBookingVenueType(entry),
   hidePublicLocation: entry.hidePublicLocation === true,
-  bookingLocation: String(entry.bookingLocation || entry.location || defaultOrganizationName).trim(),
+  bookingLocation: String(entry.bookingLocation || entry.location || `${branding.organizationName || defaultOrganizationName}${branding.address ? `, ${branding.address}` : ''}`).trim(),
   status: String(entry.status || '').trim().toLowerCase() === 'completed'
     ? 'confirmed'
     : String(entry.status || 'pending').trim().toLowerCase(),
@@ -4388,8 +4389,8 @@ const toBookingDisplayLabel = (value, fallback = '-') => {
     : fallback;
 };
 
-const buildBookingReceiptPdfAttachment = (booking = {}) => {
-  const normalized = normalizeBookingForNotification(booking);
+const buildBookingReceiptPdfAttachment = (booking = {}, branding = {}) => {
+  const normalized = normalizeBookingForNotification(booking, branding);
   const isRefundReleased = normalized.status === 'cancelled' && normalized.refundStatus === 'processed';
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -4412,11 +4413,11 @@ const buildBookingReceiptPdfAttachment = (booking = {}) => {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text(volunteerReminderSiteName, 112, 42);
+  doc.text(String(branding.organizationName || volunteerReminderSiteName), 112, 42);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  if (defaultOrganizationAddress) doc.text(defaultOrganizationAddress, 112, 60);
-  const organizationContacts = [defaultOrganizationPhone, defaultOrganizationEmail].filter(Boolean).join(' | ');
+  if (branding.address) doc.text(String(branding.address), 112, 60);
+  const organizationContacts = [branding.phone, branding.email].filter(Boolean).join(' | ');
   if (organizationContacts) doc.text(organizationContacts, 112, 77);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(isRefundReleased ? 15 : 18);
@@ -4572,7 +4573,7 @@ const buildBookingNotificationEmail = ({ booking, daysRemaining = null, changeTy
         <tr><td style="padding:24px;"><p style="font-size:17px;font-weight:700;">Dear ${escapeHtml(normalized.requesterName)},</p><p style="color:#334155;line-height:1.7;">${escapeHtml(intro)}</p>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #d7e3f3;border-radius:10px;overflow:hidden;">${rows.map(([label, value]) => `<tr><td style="width:34%;padding:11px 12px;background:#eef5ff;border-bottom:1px solid #d7e3f3;font-weight:700;color:#0a4d9f;">${escapeHtml(label)}</td><td style="padding:11px 12px;border-bottom:1px solid #d7e3f3;font-weight:700;">${escapeHtml(value)}</td></tr>`).join('')}</table>
           <p style="margin-top:18px;color:#475569;line-height:1.7;">A PDF copy of these booking and payment details is attached for your records.</p>
-          <div style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:12px;line-height:1.8;color:#64748b;"><strong>Need help?</strong><br/><a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;">Contact the Gurdwara office</a><br/>${escapeHtml(volunteerReminderSiteName)}</div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:12px;line-height:1.8;color:#64748b;"><strong>Need help?</strong><br/><a href="${escapeHtml(contactUrl)}" style="color:#0b67c2;">Contact the Gurdwara office</a><br/>${escapeHtml(branding.organizationName || volunteerReminderSiteName)}<br/>${escapeHtml(branding.address || '')}<br/>${escapeHtml([branding.phone, branding.email].filter(Boolean).join(' | '))}</div>
         </td></tr>
       </table>
     </div>`;
@@ -4580,15 +4581,16 @@ const buildBookingNotificationEmail = ({ booking, daysRemaining = null, changeTy
 };
 
 const sendBookingNotificationEmail = async (booking, options = {}) => {
-  const normalized = normalizeBookingForNotification(booking);
+  const branding = await getGurdwaraBranding(eventsDb);
+  const normalized = normalizeBookingForNotification(booking, branding);
   if (!isValidEmailAddress(normalized.requesterEmail)) {
     return { sent: false, reason: 'missing_email' };
   }
   const daysRemaining = Number.isFinite(Number(options.daysRemaining)) ? Number(options.daysRemaining) : null;
-  const template = buildBookingNotificationEmail({ booking: normalized, daysRemaining, changeType: options.changeType || 'updated' });
+  const template = buildBookingNotificationEmail({ booking: normalized, daysRemaining, changeType: options.changeType || 'updated', branding });
   let attachments = [];
   try {
-    attachments = [buildBookingReceiptPdfAttachment(normalized)];
+    attachments = [buildBookingReceiptPdfAttachment(normalized, branding)];
   } catch (error) {
     console.error('[booking-email] Unable to generate PDF attachment:', error?.message || error);
   }
@@ -6395,6 +6397,7 @@ const ledScreenService = createLedScreenService({
 const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson });
 const welcomeJourneyHandler = createWelcomeJourneyHandler({
   eventsDb,
+  getGurdwaraBranding,
   getRequestActor,
   parseJsonObjectBody,
   sendJson,

@@ -47,6 +47,7 @@ import {
   normalizeCampaignProgressStatus
 } from '../../constants/campaignProgress';
 import { useAuth } from '../../context/AuthContext';
+import { useBranding } from '../../context/BrandingContext';
 import PhoneInput from '../../components/forms/PhoneInput';
 import { isTenDigitPhone, TEN_DIGIT_PHONE_ERROR } from '../../utils/phone';
 
@@ -250,6 +251,7 @@ const normalizeProgressItems = (items = []) => {
 const AdminDonationsPage = () => {
   const { setHeaderAction } = useOutletContext();
   const { user } = useAuth();
+  const { branding } = useBranding();
   const queryClient = useQueryClient();
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
@@ -810,7 +812,7 @@ const AdminDonationsPage = () => {
     void downloadDonationInvoicePdf({
       fileName: `invoice-${entry.receiptId || entry.id}.pdf`,
       organizationName: siteConfig.name,
-      address: siteConfig.contact.address,
+      address: branding.address || siteConfig.contact.address,
       phone: siteConfig.contact.phone,
       donation: entry,
       campaignDescription: campaignMap[String(entry.campaignId)]?.description || ''
@@ -827,7 +829,7 @@ const AdminDonationsPage = () => {
     const payload = {
       fileName,
       organizationName: siteConfig.name,
-      address: siteConfig.contact.address,
+      address: branding.address || siteConfig.contact.address,
       phone: siteConfig.contact.phone,
       donation: entry,
       campaignDescription: campaignMap[String(entry.campaignId)]?.description || ''
@@ -857,7 +859,7 @@ const AdminDonationsPage = () => {
         donation: entry,
         campaignDescription: campaignMap[String(entry.campaignId)]?.description || '',
         organizationName: siteConfig.name,
-        address: siteConfig.contact.address,
+        address: branding.address || siteConfig.contact.address,
         phone: siteConfig.contact.phone,
         fileName,
         attachmentBase64
@@ -897,7 +899,7 @@ const AdminDonationsPage = () => {
     return {
       fileName: `donation-statement-${safeDonorName || 'donor'}.pdf`,
       organizationName: siteConfig.name,
-      address: siteConfig.contact.address,
+      address: branding.address || siteConfig.contact.address,
       phone: siteConfig.contact.phone,
       donor: selectedStatementDonor || {},
       donations: statementDonations,
@@ -942,7 +944,7 @@ const AdminDonationsPage = () => {
         dateFrom: bulkStatementDateFrom,
         dateTo: bulkStatementDateTo,
         organizationName: siteConfig.name,
-        address: siteConfig.contact.address,
+        address: branding.address || siteConfig.contact.address,
         phone: siteConfig.contact.phone,
         fileName: payload.fileName,
         attachmentBase64

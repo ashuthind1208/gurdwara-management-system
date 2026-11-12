@@ -12,6 +12,7 @@ import { siteConfig } from '../../constants/siteConfig';
 import useSeoMeta from '../../hooks/useSeoMeta';
 import Seo from '../../components/common/Seo';
 import cmsService from '../../services/cmsService';
+import { useBranding } from '../../context/BrandingContext';
 
 const DEFAULT_CONTACT_HOURS = [
   { label: 'Darbar Sahib', value: 'Daily: 5:00 AM to 9:00 PM' },
@@ -89,6 +90,7 @@ const buildContactInquiryHtml = ({ siteName, logoUrl, name, email, phone, messag
 };
 
 const ContactPage = () => {
+  const { branding } = useBranding();
   const [isSendingContactMessage, setIsSendingContactMessage] = useState(false);
   const contactSubmitEndpoint = String(
     process.env.REACT_APP_WEBHOOK_URL ||
@@ -188,7 +190,7 @@ const ContactPage = () => {
     }
   };
 
-  const address = content?.address || siteConfig.contact.address || '';
+  const address = branding.address || content?.address || siteConfig.contact.address || '';
   const phone = content?.phone || siteConfig.contact.phone;
   const email = content?.email || siteConfig.contact.email;
   const normalizedPhone = String(phone || '').replace(/[^\d+]/g, '');

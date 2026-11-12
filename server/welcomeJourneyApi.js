@@ -6,7 +6,7 @@ const {
   allowWelcomeFollowUpSubmission
 } = require('./welcomeJourney');
 
-const createWelcomeJourneyHandler = ({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson, verifyGoogleAccessToken, appendAuditLog }) => async (request, response, requestUrl) => {
+const createWelcomeJourneyHandler = ({ eventsDb, getGurdwaraBranding = async () => ({}), getRequestActor, parseJsonObjectBody, sendJson, verifyGoogleAccessToken, appendAuditLog }) => async (request, response, requestUrl) => {
   const path = requestUrl.pathname;
   const actor = getRequestActor(request);
   const fail = (status, message) => sendJson(response, status, { ok: false, message });
@@ -40,9 +40,14 @@ const createWelcomeJourneyHandler = ({ eventsDb, getRequestActor, parseJsonObjec
     if (path === '/api/welcome-journey/settings' && request.method === 'GET') {
       const saved = await eventsDb.getSingleton('welcome_journey_settings', null);
       const settings = normalizeWelcomeJourneySettings(saved || DEFAULT_WELCOME_JOURNEY_SETTINGS);
+      const branding = await getGurdwaraBranding(eventsDb);
+      const address = String(branding?.address || settings.address || '').trim();
+      const directionsUrl = String(branding?.address || '').trim()
+        ? `https://maps.google.com/?q=${encodeURIComponent(String(branding.address).trim())}`
+        : settings.directionsUrl;
       let access = { user: null, reason: 'google_sign_in_required' };
       try { access = await authenticateAdminUser(['super admin']); } catch { access = { user: null, reason: 'account_not_active_approved' }; }
-      return sendJson(response, 200, { ok: true, data: { ...settings, canSave: Boolean(access.user), canSaveReason: access.reason, followUpAvailable: true } });
+      return sendJson(response, 200, { ok: true, data: { ...settings, address, directionsUrl, canSave: Boolean(access.user), canSaveReason: access.reason, followUpAvailable: true } });
     }
     if (path === '/api/welcome-journey/settings' && request.method === 'PUT') {
       const access = await authenticateAdminUser(['super admin']);
