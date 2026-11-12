@@ -24,6 +24,8 @@ test('derives a geocoder-friendly Canadian locality from a street address', () =
   expect(buildGeocodingQueries('Toronto, Ontario')).toContain('Toronto, Ontario, Canada');
   expect(buildGeocodingQueries('7035 Sixth Line, Milton, L9T 7L6')).toContain('Milton, Canada');
   expect(buildGeocodingQueries('7035 Sixth Line, Milton ON, L9T 7L6')).toContain('Milton, ON, Canada');
+  expect(buildGeocodingQueries('106 Enford Crescent Brampton, L7A 4C6')).toContain('Brampton, Canada');
+  expect(buildGeocodingQueries('123 Main Street, Brampton, ON L6Y 1A1')).toContain('Brampton, ON, Canada');
 });
 
 test('uses locality instead of postal code when an address lookup fails', async () => {
@@ -56,4 +58,17 @@ test('uses a newly saved Gurdwara address to geocode the updated location', asyn
     .mockResolvedValueOnce({ ok: true, json: async () => forecastResult });
   await weatherService.getForAddress('123 Main Street, Milton ON');
   expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('name')).toBe('123 Main Street, Milton ON');
+});
+
+test('recovers current weather when saved Canadian address appends city to the street line', async () => {
+  const fetchMock = jest.spyOn(global, 'fetch')
+    .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [{ ...geocodeResult.results[0], name: 'Brampton', admin1: 'Ontario' }] }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => forecastResult });
+
+  const result = await weatherService.getForAddress('106 Enford Crescent Brampton, L7A 4C6');
+
+  expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('name')).toBe('106 Enford Crescent Brampton, L7A 4C6');
+  expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('name')).toBe('Brampton, Canada');
+  expect(result).toMatchObject({ location: 'Brampton, Ontario', temperature: 18 });
 });
