@@ -2611,7 +2611,7 @@ const Navbar = () => {
                     <MagnifyingGlassIcon className="!h-2.5 !w-2.5" />
                     <span className="text-[11px] font-semibold leading-none text-white">Search</span>
                   </button>
-                  <div className={`absolute inset-0 z-[500] h-8 rounded-xl bg-slate-950/95 p-1 shadow-xl backdrop-blur transition-[opacity,transform] duration-200 ease-out ${isInlineSearchExpanded ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-1'}`}>
+                  <div className={`absolute inset-0 z-[500] h-6 rounded-full bg-slate-950/95 shadow-xl backdrop-blur transition-[opacity,transform] duration-200 ease-out ${isInlineSearchExpanded ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-1'}`}>
                     <GlobalSearchBar
                       className="w-full min-w-0"
                       panelClassName="z-[999] max-w-full overflow-x-hidden !top-[calc(100%+2px)]"
