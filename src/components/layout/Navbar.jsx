@@ -2483,7 +2483,9 @@ const Navbar = () => {
                 {isKirtanPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
               </button>
               <span className={`h-2.5 w-2.5 rounded-full ${statusDotClass}`} />
-              <span className="text-[11px] font-semibold text-blue-50">Live Kirtan from Darbar Sahib</span>
+              <span className="hidden text-[11px] font-semibold text-blue-50 min-[1920px]:inline">Live Kirtan from Darbar Sahib</span>
+              <span className="hidden text-[11px] font-semibold text-blue-50 min-[1440px]:inline min-[1920px]:hidden">Darbar Sahib</span>
+              <span className="inline text-[11px] font-semibold text-blue-50 min-[1440px]:hidden">Live</span>
               <audio
                 ref={liveAudioRef}
                 src={Hls.isSupported() ? undefined : siteConfig.liveKirtanStreamUrl}
@@ -2598,7 +2600,7 @@ const Navbar = () => {
                 className="relative z-[320] flex h-6 items-center overflow-visible"
               >
                 <span aria-hidden="true" className="ml-2 mr-2 text-white/70">|</span>
-                <div className={`relative h-6 overflow-visible transition-[width] duration-300 ease-out ${isInlineSearchExpanded ? 'w-[min(24rem,calc(100vw-38rem))]' : 'w-[7.25rem]'}`}>
+                <div className={`relative h-6 shrink-0 overflow-visible transition-[width] duration-200 ease-out ${isInlineSearchExpanded ? 'w-[min(14rem,calc(100vw-48rem))]' : 'w-[7.25rem]'}`}>
                   <button
                     type="button"
                     onClick={openInlineSearch}
@@ -2609,7 +2611,7 @@ const Navbar = () => {
                     <MagnifyingGlassIcon className="!h-2.5 !w-2.5" />
                     <span className="text-[11px] font-semibold leading-none text-white">Search</span>
                   </button>
-                  <div className={`absolute inset-0 transition-[opacity,transform] duration-300 ease-out ${isInlineSearchExpanded ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 translate-x-2'}`}>
+                  <div className={`absolute inset-0 z-[500] h-8 rounded-xl bg-slate-950/95 p-1 shadow-xl backdrop-blur transition-[opacity,transform] duration-200 ease-out ${isInlineSearchExpanded ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-1'}`}>
                     <GlobalSearchBar
                       className="w-full min-w-0"
                       panelClassName="z-[999] max-w-full overflow-x-hidden !top-[calc(100%+2px)]"
@@ -2948,7 +2950,6 @@ const Navbar = () => {
           </div>
 
           <div className="relative z-[245] flex items-center justify-end gap-1.5">
-            <WeatherRibbon address={branding.address || siteConfig.contact.address} />
             {isAuthenticated ? (
               <button
                 type="button"

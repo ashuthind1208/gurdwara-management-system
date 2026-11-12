@@ -12,11 +12,20 @@ const buildGeocodingQueries = (address) => {
   const parts = raw.split(',').map((part) => part.trim()).filter(Boolean);
   const queries = [raw];
   const tail = parts[parts.length - 1] || '';
+  const canadianPostal = tail.match(/^(.*?)\s*([A-Z]\d[A-Z]\s?\d[A-Z]\d)$/i);
+  if (canadianPostal) {
+    const locality = canadianPostal[1].trim() || parts[parts.length - 2] || '';
+    if (locality) {
+      const localityWithProvince = locality.match(/^(.+?)\s+([A-Z]{2})$/i);
+      if (localityWithProvince && CANADIAN_PROVINCES.has(localityWithProvince[2].toUpperCase())) queries.push(`${localityWithProvince[1]}, ${localityWithProvince[2].toUpperCase()}, Canada`);
+      else queries.push(`${locality}, Canada`);
+    }
+  }
   const abbreviatedTail = tail.match(/^(.+?)\s+([A-Z]{2})$/i);
   if (abbreviatedTail && CANADIAN_PROVINCES.has(abbreviatedTail[2].toUpperCase())) {
     queries.push(`${abbreviatedTail[1]}, ${abbreviatedTail[2].toUpperCase()}, Canada`);
   }
-  if (parts.length >= 2) {
+  if (parts.length >= 2 && !canadianPostal) {
     const locality = parts.slice(-2).join(', ');
     queries.push(`${locality}, Canada`);
   }

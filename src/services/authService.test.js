@@ -1,4 +1,4 @@
-import authService from './authService';
+import authService, { resolveGoogleOAuthRedirectUri } from './authService';
 import userService from './userService';
 
 jest.mock('./userService', () => ({
@@ -59,5 +59,16 @@ describe('inactive Member authentication', () => {
       googleAccessToken: 'real-google-access-token'
     });
     expect(response.data.token).toBe('real-google-access-token');
+  });
+});
+
+describe('Google OAuth redirect URI', () => {
+  test('uses the configured localhost callback for a 127.0.0.1 development origin', () => {
+    expect(resolveGoogleOAuthRedirectUri('http://127.0.0.1:3001', 'http://localhost:3001/login')).toBe('http://localhost:3001/login');
+  });
+
+  test('uses the current origin callback for production or unrelated hosts', () => {
+    expect(resolveGoogleOAuthRedirectUri('https://singhsabhamilton.com', 'http://localhost:3001/login')).toBe('https://singhsabhamilton.com/login');
+    expect(resolveGoogleOAuthRedirectUri('http://127.0.0.1:3001', '')).toBe('http://127.0.0.1:3001/login');
   });
 });

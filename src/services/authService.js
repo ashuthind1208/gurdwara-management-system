@@ -75,6 +75,18 @@ const resolveAuthPolicy = ({ email, intent = 'signin', existingUser = null }) =>
   };
 };
 
+export const resolveGoogleOAuthRedirectUri = (origin, configuredRedirectUri = '') => {
+  const current = new URL(origin);
+  const configured = String(configuredRedirectUri || '').trim();
+  if (configured && ['localhost', '127.0.0.1'].includes(current.hostname)) {
+    try {
+      const callback = new URL(configured);
+      if (callback.hostname === 'localhost' && callback.port === current.port && callback.pathname === '/login') return callback.toString();
+    } catch { /* use the current origin if the configured callback is malformed */ }
+  }
+  return `${current.origin}/login`;
+};
+
 const getPersistedUser = () => {
   if (typeof window === 'undefined') {
     return null;
@@ -191,7 +203,7 @@ const authService = {
     try {
       const parsed = new URL(sanitized);
       if (/accounts\.google\.com$/.test(parsed.hostname)) {
-        const redirectUri = `${window.location.origin}/login`;
+        const redirectUri = resolveGoogleOAuthRedirectUri(window.location.origin, parsed.searchParams.get('redirect_uri'));
         parsed.searchParams.set('redirect_uri', redirectUri);
 
         if (!parsed.searchParams.get('response_type')) {

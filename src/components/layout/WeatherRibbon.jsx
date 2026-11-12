@@ -41,7 +41,7 @@ const WeatherRibbon = ({ address }) => {
 
   return (
     <div
-      className="group relative hidden md:block"
+      className="group relative min-w-0"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
       onFocus={() => setIsOpen(true)}
@@ -55,7 +55,7 @@ const WeatherRibbon = ({ address }) => {
         aria-label={`Gurdwara weather: ${description}. View forecast.`}
         aria-expanded={isOpen}
         title="Gurdwara weather"
-        className="inline-flex h-7 min-w-[2.75rem] items-center justify-center gap-1 rounded-full px-1.5 text-sm font-bold tabular-nums text-blue-50 transition hover:bg-blue-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="inline-flex h-6 min-w-0 items-center justify-center gap-1 rounded-full px-1.5 text-[11px] font-bold tabular-nums text-blue-50 transition hover:bg-blue-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         <WeatherGlyph kind={data?.icon || 'cloud'} className="h-4 w-4" />
         <span>{isPending ? '—°' : isError ? '—°' : `${data.temperature}°`}</span>
