@@ -21,11 +21,15 @@ const AdminGurdwaraBrandingPage = () => {
   const queryClient = useQueryClient();
   const [uploadState, setUploadState] = useState({ pending: false, progress: 0, error: '' });
   const [themeName, setThemeName] = useState('');
-  const [selectedSavedThemeId, setSelectedSavedThemeId] = useState('');
+  const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+  const [themeDialogError, setThemeDialogError] = useState('');
   const form = useForm({ defaultValues: DEFAULT_GURDWARA_BRANDING });
   const { reset: resetForm } = form;
   const resetFormRef = useRef(resetForm);
   resetFormRef.current = resetForm;
+  const themeNameInputRef = useRef(null);
+  const saveThemeTriggerRef = useRef(null);
+  const themeDialogRef = useRef(null);
   const brandingInitializedRef = useRef(false);
   const { data, error: brandingLoadError, isLoading: brandingLoading } = useQuery({
     queryKey: ['gurdwara-branding'],
@@ -56,10 +60,16 @@ const AdminGurdwaraBrandingPage = () => {
         ...Object.fromEntries(['footerColor', 'textColor', 'buttonColor', 'buttonHoverColor', 'linkColor', 'linkHoverColor', 'tagline', 'faviconUrl', 'headingFont', 'bodyFont', 'cornerStyle', 'logoShape', ...CONTACT_FIELDS].map((key) => [key, String(merged[key] || '').trim()]))
       });
     },
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
       queryClient.setQueryData(['gurdwara-branding'], response?.data || response);
       queryClient.invalidateQueries({ queryKey: ['gurdwara-branding'] });
       queryClient.invalidateQueries({ queryKey: ['ask-granthi-board'] });
+      if (variables.persistedSavedThemes) form.setValue('savedThemes', variables.persistedSavedThemes, { shouldDirty: false });
+      if (variables.closeThemeDialog) {
+        setIsThemeDialogOpen(false);
+        setThemeName('');
+        setThemeDialogError('');
+      }
     }
   });
 
@@ -80,9 +90,18 @@ const AdminGurdwaraBrandingPage = () => {
     saveMutation.mutate({ values: applied, section: 'branding' });
   };
 
-  const saveCurrentTheme = () => {
+  const saveCurrentTheme = async (event) => {
+    event.preventDefault();
+    if (saveMutation.isPending) return;
     const name = themeName.trim();
-    if (!name) return;
+    if (!name || name.length > 60) {
+      setThemeDialogError('Enter a theme name between 1 and 60 characters.');
+      return;
+    }
+    if (!(await form.trigger())) {
+      setThemeDialogError('Please correct the branding fields before saving this theme.');
+      return;
+    }
     const current = form.getValues();
     const theme = {
       id: `theme-${Date.now().toString(36)}`,
@@ -90,17 +109,53 @@ const AdminGurdwaraBrandingPage = () => {
       values: Object.fromEntries(BRANDING_THEME_KEYS.map((key) => [key, String(current[key] || '')]))
     };
     const savedThemes = [...(current.savedThemes || []), theme].slice(-12);
-    form.setValue('savedThemes', savedThemes, { shouldDirty: true });
-    setThemeName('');
-    saveMutation.mutate({ values: { ...current, savedThemes }, section: 'branding' });
+    saveMutation.mutate({ values: { ...current, savedThemes }, section: 'branding', persistedSavedThemes: savedThemes, closeThemeDialog: true });
   };
 
   const deleteSavedTheme = (themeId) => {
     const savedThemes = (form.getValues('savedThemes') || []).filter((theme) => theme.id !== themeId);
-    const current = { ...form.getValues(), savedThemes };
-    form.setValue('savedThemes', savedThemes, { shouldDirty: true });
-    saveMutation.mutate({ values: current, section: 'branding' });
+    saveMutation.mutate({ values: { ...form.getValues(), savedThemes }, section: 'branding', persistedSavedThemes: savedThemes });
   };
+
+  const closeThemeDialog = () => {
+    if (saveMutation.isPending) return;
+    setIsThemeDialogOpen(false);
+    setThemeName('');
+    setThemeDialogError('');
+  };
+
+  useEffect(() => {
+    if (!isThemeDialogOpen) return undefined;
+    const saveThemeTrigger = saveThemeTriggerRef.current;
+    themeNameInputRef.current?.focus();
+    const handleDialogKeys = (event) => {
+      if (event.key === 'Escape') {
+        if (saveMutation.isPending) return;
+        event.preventDefault();
+        setIsThemeDialogOpen(false);
+        setThemeName('');
+        setThemeDialogError('');
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const controls = themeDialogRef.current?.querySelectorAll('input:not([disabled]), button:not([disabled])');
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleDialogKeys);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeys);
+      saveThemeTrigger?.focus();
+    };
+  }, [isThemeDialogOpen, saveMutation.isPending]);
 
   const saveSection = (section) => form.handleSubmit((payload) => saveMutation.mutate({ values: payload, section }))();
   const saveContactSection = () => {
@@ -181,7 +236,7 @@ const AdminGurdwaraBrandingPage = () => {
             <fieldset className="rounded-lg border border-slate-200 p-3">
               <legend className="px-1 text-sm font-semibold text-slate-700">Theme presets</legend>
               <div className="flex flex-wrap gap-2">{BRANDING_PRESETS.map((preset) => (
-                <button key={preset.id} type="button" onClick={() => applyTheme(preset)} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                <button key={preset.id} type="button" onClick={() => applyTheme(preset)} disabled={saveMutation.isPending || brandingLoading || Boolean(brandingLoadError)} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
                   <span className="flex gap-0.5">{[preset.primaryColor, preset.accentColor, preset.surfaceColor].map((color) => <span key={color} className="h-4 w-4 rounded-full border border-slate-300" style={{ backgroundColor: color }} />)}</span>{preset.label}
                 </button>
               ))}</div>
@@ -189,11 +244,11 @@ const AdminGurdwaraBrandingPage = () => {
 
             <fieldset className="rounded-lg border border-slate-200 p-3">
               <legend className="px-1 text-sm font-semibold text-slate-700">My saved themes</legend>
-              <p className="text-xs text-slate-500">Apply or create themes from Theme actions below.</p>
+              <p className="text-xs text-slate-500">Apply a saved design here, or save your current design as a reusable theme.</p>
               <ul className="mt-2 divide-y divide-slate-100">{(values.savedThemes || []).map((theme) => (
                 <li key={theme.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                   <span className="flex min-w-0 items-center gap-2"><span className="flex gap-0.5">{[theme.values.primaryColor, theme.values.accentColor, theme.values.surfaceColor].map((color, index) => <span key={index} className="h-4 w-4 rounded-full border border-slate-300" style={{ backgroundColor: color }} />)}</span><span className="truncate font-semibold text-slate-800">{theme.name}</span></span>
-                  <button type="button" onClick={() => deleteSavedTheme(theme.id)} className="text-xs font-semibold text-red-700 underline">Delete</button>
+                  <span className="flex shrink-0 gap-3"><button type="button" onClick={() => applyTheme(theme.values)} disabled={saveMutation.isPending || brandingLoading || Boolean(brandingLoadError)} className="text-xs font-semibold text-brand-blue underline disabled:opacity-50">Apply</button><button type="button" onClick={() => deleteSavedTheme(theme.id)} disabled={saveMutation.isPending || brandingLoading || Boolean(brandingLoadError)} className="text-xs font-semibold text-red-700 underline disabled:opacity-50">Delete</button></span>
                 </li>
               ))}{!(values.savedThemes || []).length ? <li className="py-2 text-xs text-slate-500">No saved themes yet.</li> : null}</ul>
             </fieldset>
@@ -231,16 +286,12 @@ const AdminGurdwaraBrandingPage = () => {
                 <select {...form.register(field)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-1 font-normal leading-tight">{BRANDING_FONT_OPTIONS.map((font) => <option key={font} value={font} className="py-0 leading-tight">{font}</option>)}</select>
               </label>)}
               <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Corner style<select {...form.register('cornerStyle')} className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 font-normal"><option value="soft">Soft (rounded)</option><option value="sharp">Sharp (square)</option></select></label>
-              <div className="sm:col-span-6">{renderSaveStatus('branding')}<Button type="button" className="w-full" onClick={() => saveSection('branding')} disabled={saveMutation.isPending || uploadState.pending}>{saveMutation.isPending ? 'Saving…' : 'Save branding'}</Button></div>
-            </fieldset>
-
-            <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4" aria-label="Theme actions">
-              <h3 className="font-heading text-lg font-bold text-slate-900">Theme actions</h3>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white p-3"><label htmlFor="saved-theme-picker" className="block text-xs font-bold uppercase text-slate-600">Apply a saved theme</label><select id="saved-theme-picker" value={selectedSavedThemeId} onChange={(event) => setSelectedSavedThemeId(event.target.value)} disabled={!(values.savedThemes || []).length} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">Choose a saved theme…</option>{(values.savedThemes || []).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}</select><Button type="button" className="mt-2 w-full" onClick={() => { const theme = (values.savedThemes || []).find((entry) => entry.id === selectedSavedThemeId); if (theme) applyTheme(theme.values); }} disabled={!selectedSavedThemeId || saveMutation.isPending}>Apply theme</Button></div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3"><label htmlFor="new-theme-name" className="block text-xs font-bold uppercase text-slate-600">Save current design</label><input id="new-theme-name" value={themeName} onChange={(event) => setThemeName(event.target.value)} maxLength={60} placeholder="Enter a name for this theme" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /><Button type="button" variant="secondary" className="mt-2 w-full" onClick={saveCurrentTheme} disabled={!themeName.trim() || saveMutation.isPending || uploadState.pending}>Save and create theme</Button></div>
+              <div className="sm:col-span-6">{renderSaveStatus('branding')}</div>
+              <div className="flex flex-wrap gap-3 sm:col-span-6">
+                <Button type="button" onClick={() => saveSection('branding')} disabled={saveMutation.isPending || uploadState.pending || brandingLoading || Boolean(brandingLoadError)}>{saveMutation.isPending && saveMutation.variables?.section !== 'contact' ? 'Saving…' : 'Save branding'}</Button>
+                <Button ref={saveThemeTriggerRef} type="button" variant="secondary" onClick={() => { saveMutation.reset(); setThemeDialogError(''); setIsThemeDialogOpen(true); }} disabled={saveMutation.isPending || uploadState.pending || brandingLoading || Boolean(brandingLoadError)}>Save and create theme</Button>
               </div>
-            </section>
+            </fieldset>
 
             <fieldset disabled={brandingLoading} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 disabled:opacity-70"><legend className="px-1 text-sm font-semibold text-slate-700">Contact and social links</legend>
               <p className="text-xs text-slate-500 sm:col-span-2">The address feeds the local-weather lookup in the website ribbon.</p>
@@ -274,6 +325,19 @@ const AdminGurdwaraBrandingPage = () => {
           </div>
         </section>
       </div>
+      {isThemeDialogOpen ? <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/60 p-4" role="presentation">
+        <form ref={themeDialogRef} role="dialog" aria-modal="true" aria-labelledby="save-theme-dialog-title" onSubmit={saveCurrentTheme} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <h2 id="save-theme-dialog-title" className="font-heading text-xl font-bold text-slate-900">Save and create theme</h2>
+          <label htmlFor="new-theme-name" className="mt-4 block text-sm font-semibold text-slate-700">Theme name
+            <input ref={themeNameInputRef} id="new-theme-name" value={themeName} onChange={(event) => { setThemeName(event.target.value); setThemeDialogError(''); }} maxLength={60} required className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal" />
+          </label>
+          {themeDialogError || (saveMutation.isError && saveMutation.variables?.closeThemeDialog) ? <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{themeDialogError || saveMutation.error?.response?.data?.message || saveMutation.error?.message || 'Unable to save this theme.'}</p> : null}
+          <div className="mt-5 flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={closeThemeDialog} disabled={saveMutation.isPending}>Cancel</Button>
+            <Button type="submit" disabled={saveMutation.isPending || uploadState.pending}>{saveMutation.isPending && saveMutation.variables?.closeThemeDialog ? 'Saving…' : 'Save'}</Button>
+          </div>
+        </form>
+      </div> : null}
     </div>
   );
 };

@@ -148,8 +148,10 @@ const setSingleton = async (resource, payload) => {
 
 const listItems = async (resource) => {
   const normalized = normalizeResource(resource);
+  // Audit tables show metadata only; saved content snapshots can contain large media data.
+  const payloadProjection = normalized === 'audit_logs' ? "JSON_REMOVE(payload, '$.payload') AS payload" : 'payload';
   const [rows] = await requirePool().execute(
-    'SELECT id, payload FROM app_items WHERE resource = ? ORDER BY updated_at DESC',
+    `SELECT id, ${payloadProjection} FROM app_items WHERE resource = ? ORDER BY updated_at DESC`,
     [normalized]
   );
   return rows.map((row) => ({ id: row.id, ...parsePayload(row.payload) }));

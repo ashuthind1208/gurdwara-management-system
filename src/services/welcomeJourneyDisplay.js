@@ -20,10 +20,10 @@ WELCOME_THEMES.warm = WELCOME_THEMES.saffron;
 export const resolveWelcomeTheme = (themeId, branding = {}) => {
   const theme = WELCOME_THEMES[LEGACY_THEME_IDS[themeId] || themeId] || WELCOME_THEMES.classic;
   const validHex = (value) => /^#[0-9a-f]{6}$/i.test(String(value || ''));
-  const primaryColor = validHex(theme.primaryColor) ? theme.primaryColor : (validHex(branding.primaryColor) ? branding.primaryColor : '#0B4EA2');
-  const accentColor = validHex(theme.accentColor) ? theme.accentColor : (validHex(branding.accentColor) ? branding.accentColor : '#F4A300');
-  const surfaceColor = validHex(theme.surfaceColor) ? theme.surfaceColor : (validHex(branding.surfaceColor) ? branding.surfaceColor : '#FFF8E8');
-  const textColor = validHex(theme.textColor) ? theme.textColor : (validHex(branding.textColor) ? branding.textColor : '#172033');
+  const primaryColor = validHex(branding.primaryColor) ? branding.primaryColor : (validHex(theme.primaryColor) ? theme.primaryColor : '#0B4EA2');
+  const accentColor = validHex(branding.accentColor) ? branding.accentColor : (validHex(theme.accentColor) ? theme.accentColor : '#F4A300');
+  const surfaceColor = validHex(branding.surfaceColor) ? branding.surfaceColor : (validHex(theme.surfaceColor) ? theme.surfaceColor : '#FFF8E8');
+  const textColor = validHex(branding.textColor) ? branding.textColor : (validHex(theme.textColor) ? theme.textColor : '#172033');
   return {
     ...theme,
     primaryColor,

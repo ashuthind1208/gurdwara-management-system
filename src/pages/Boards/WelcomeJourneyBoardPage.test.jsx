@@ -1,17 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WelcomeJourneyBoardPage from './WelcomeJourneyBoardPage';
+import brandingService from '../../services/brandingService';
 import welcomeJourneyService from '../../services/welcomeJourneyService';
 import cmsService, { resolveScheduleForDate } from '../../services/cmsService';
 
 jest.mock('../../services/welcomeJourneyService', () => ({ __esModule: true, default: { getSettings: jest.fn() } }));
+jest.mock('../../services/brandingService', () => ({ __esModule: true, default: { getBranding: jest.fn() } }));
 jest.mock('../../services/cmsService', () => ({ __esModule: true, default: { getHomeContent: jest.fn() }, resolveScheduleForDate: jest.fn() }));
 jest.mock('../../context/BrandingContext', () => ({ ...jest.requireActual('../../context/BrandingContext'), useBranding: () => ({ branding: { organizationName: 'Example Gurdwara', address: '123 Example Road' }, logoSrc: '/logo.png' }) }));
 jest.mock('../../components/common/Seo', () => () => null);
-jest.mock('qrcode.react', () => ({ QRCodeSVG: ({ value }) => <svg data-testid="welcome-qr" data-value={value} /> }));
+jest.mock('qrcode.react', () => ({ QRCodeSVG: ({ value, fgColor, bgColor }) => <svg data-testid="welcome-qr" data-value={value} data-fg-color={fgColor} data-bg-color={bgColor} /> }));
 
 beforeEach(() => {
+  jest.clearAllMocks();
+  brandingService.getBranding.mockResolvedValue({ data: { primaryColor: '#123456', accentColor: '#ABCDEF', surfaceColor: '#F0E1D2', textColor: '#102030' } });
   welcomeJourneyService.getSettings.mockResolvedValue({ enabled: true, titleEnglish: 'Welcome home', address: '123 Example Road', directionsUrl: 'https://maps.google.com/?q=test', showProgram: true, showLangar: true, showFollowUp: true, dishes: [{ id: 'dal', nameEnglish: 'Dal', namePunjabi: 'ਦਾਲ' }, { id: 'rice', nameEnglish: 'Rice', namePunjabi: 'ਚੌਲ' }], selectedDishIds: ['dal'] });
   resolveScheduleForDate.mockReturnValue({ entries: [{ id: 'morning', timeEn: '10 AM', titleEn: 'Kirtan', isActive: true }] });
   cmsService.getHomeContent.mockResolvedValue({ data: { scheduleDays: [], langarItems: [{ id: 'langar-1', name: 'Milk', needed: true }] } });
@@ -27,6 +31,31 @@ test('shows the configured welcome, current program, langar and scan QR without 
   expect(screen.queryByText('Milk')).not.toBeInTheDocument();
   expect(screen.queryByText('123 Example Road')).not.toBeInTheDocument();
   expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-value', `${window.location.origin}/welcome`);
+  await waitFor(() => expect(screen.getByRole('complementary')).toHaveStyle({ backgroundColor: '#F0E1D2', color: '#102030' }));
+  expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-fg-color', '#123456');
+  expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-bg-color', '#F0E1D2');
+});
+
+test('polls branding every 15 seconds and updates board and card colors without reload', async () => {
+  jest.useFakeTimers();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(<QueryClientProvider client={client}><WelcomeJourneyBoardPage /></QueryClientProvider>);
+  try {
+    await waitFor(() => expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-fg-color', '#123456'));
+    brandingService.getBranding.mockResolvedValue({ data: { primaryColor: '#654321', accentColor: '#FEDCBA', surfaceColor: '#D2E1F0', textColor: '#302010' } });
+    const callsBeforePolling = brandingService.getBranding.mock.calls.length;
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+    expect(brandingService.getBranding.mock.calls.length).toBeGreaterThan(callsBeforePolling);
+    await waitFor(() => expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-fg-color', '#654321'));
+    expect(screen.getByRole('complementary')).toHaveStyle({ backgroundColor: '#D2E1F0', color: '#302010' });
+    expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-bg-color', '#D2E1F0');
+  } finally {
+    view.unmount();
+    client.clear();
+    jest.useRealTimers();
+  }
 });
 
 test('hides directions and dish names but keeps service time, langar note and QR when menu is hidden', async () => {
