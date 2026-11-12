@@ -25,6 +25,7 @@ import gurdwaraLogo from '../../assets/default-gurdwara.svg';
 import { isEventCurrent } from '../../utils/eventAvailability';
 import { truncateHeading, truncateHtmlByCharacters } from '../../utils/newsContent';
 import LangarNeedsBoard from '../../components/langar/LangarNeedsBoardReference';
+import PageWidgets from '../../components/widgets/PageWidgets';
 
 const toDateKey = (value = new Date()) => {
   const date = value instanceof Date ? value : new Date(value);
@@ -718,6 +719,7 @@ const HomePage = () => {
                 ) : null}
               </div>
             </section>
+            <PageWidgets pagePath="/" homeColumn="primary" />
           </div>
 
           <div className="min-w-0 space-y-3 self-start">
@@ -887,6 +889,7 @@ const HomePage = () => {
                 {ad.bannerUrl ? <img src={ad.bannerUrl} alt={ad.title || 'Advertisement'} className="h-28 w-full p-2 object-contain md:h-32" loading="lazy" /> : null}
               </a>
             ))}
+            <PageWidgets pagePath="/" homeColumn="sidebar" />
           </div>
         </div>
       </section>

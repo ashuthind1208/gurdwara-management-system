@@ -82,7 +82,7 @@ const PublicLayout = () => {
         <Suspense fallback={<div className="py-20 text-center text-slate-600">Loading page...</div>}>
           <Outlet />
         </Suspense>
-        {isBuiltInPublicPage ? <PageWidgets pagePath={location.pathname} region="columns" /> : null}
+        {isBuiltInPublicPage && !isHomeRoute ? <PageWidgets pagePath={location.pathname} region="columns" /> : null}
         {isBuiltInPublicPage ? <PageWidgets pagePath={location.pathname} region="footer" /> : null}
       </main>
       <Footer />

@@ -7,25 +7,48 @@ const CANADIAN_PROVINCES = new Map([
   ['SK', 'Saskatchewan'], ['YT', 'Yukon']
 ]);
 
+const STREET_SUFFIXES = ['street', 'st', 'road', 'rd', 'avenue', 'ave', 'crescent', 'cres', 'drive', 'dr', 'line', 'boulevard', 'blvd', 'court', 'ct', 'place', 'pl', 'way', 'trail', 'trl', 'lane', 'ln', 'terrace', 'ter', 'parkway', 'pkwy', 'highway', 'hwy'];
+
+const stripCanadianProvince = (value) => {
+  const text = String(value || '').trim();
+  for (const [code, province] of CANADIAN_PROVINCES) {
+    if (new RegExp(`^(${code}|${province})\\.?$`, 'i').test(text)) return { locality: '', province: code };
+    const match = text.match(new RegExp(`(?:,\\s*|\\s+)(${code}|${province})\\.?$`, 'i'));
+    if (match) return { locality: text.slice(0, match.index).trim(), province: code };
+  }
+  return { locality: text, province: '' };
+};
+
+const localityFromStreetAddress = (value) => {
+  const text = String(value || '').trim();
+  if (!/^\d+\b/.test(text)) return text;
+  const suffixPattern = new RegExp(`\\b(?:${STREET_SUFFIXES.join('|')})\\.?\\b`, 'ig');
+  let lastSuffix = null;
+  for (const match of text.matchAll(suffixPattern)) lastSuffix = match;
+  return lastSuffix ? text.slice(lastSuffix.index + lastSuffix[0].length).replace(/^[\s,.-]+/, '').trim() : '';
+};
+
 const buildGeocodingQueries = (address) => {
   const raw = String(address || '').trim();
   const parts = raw.split(',').map((part) => part.trim()).filter(Boolean);
   const queries = [raw];
-  const tail = parts[parts.length - 1] || '';
-  const canadianPostal = tail.match(/^(.*?)\s*([A-Z]\d[A-Z]\s?\d[A-Z]\d)$/i);
-  if (canadianPostal) {
-    const locality = canadianPostal[1].trim() || parts[parts.length - 2] || '';
-    if (locality) {
-      const localityWithProvince = locality.match(/^(.+?)\s+([A-Z]{2})$/i);
-      if (localityWithProvince && CANADIAN_PROVINCES.has(localityWithProvince[2].toUpperCase())) queries.push(`${localityWithProvince[1]}, ${localityWithProvince[2].toUpperCase()}, Canada`);
-      else queries.push(`${locality}, Canada`);
-    }
-  }
+  const postalMatch = raw.match(/\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b/i);
+  const withoutPostal = postalMatch ? raw.replace(postalMatch[0], '').replace(/\s*,\s*,\s*/g, ',').replace(/[ ,\s]+$/, '').trim() : raw;
+  const addressParts = withoutPostal.split(',').map((part) => part.trim()).filter(Boolean);
+  const tail = addressParts[addressParts.length - 1] || '';
+  const { locality: tailLocality, province: tailProvince } = stripCanadianProvince(tail);
+  const previous = addressParts.length > 1 ? addressParts[addressParts.length - 2] : '';
+  const streetLocality = localityFromStreetAddress(tailLocality) || localityFromStreetAddress(previous);
+  const locality = streetLocality || (tailLocality && !/^\d+\b/.test(tailLocality) ? tailLocality : '') || previous;
+  const localityInfo = stripCanadianProvince(locality);
+  const city = localityFromStreetAddress(localityInfo.locality) || localityInfo.locality;
+  const province = localityInfo.province || tailProvince;
+  if (postalMatch && city) queries.push(`${city}${province ? `, ${province}` : ''}, Canada`);
   const abbreviatedTail = tail.match(/^(.+?)\s+([A-Z]{2})$/i);
   if (abbreviatedTail && CANADIAN_PROVINCES.has(abbreviatedTail[2].toUpperCase())) {
     queries.push(`${abbreviatedTail[1]}, ${abbreviatedTail[2].toUpperCase()}, Canada`);
   }
-  if (parts.length >= 2 && !canadianPostal) {
+  if (parts.length >= 2 && !postalMatch) {
     const locality = parts.slice(-2).join(', ');
     queries.push(`${locality}, Canada`);
   }
