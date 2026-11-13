@@ -29,9 +29,58 @@ test('loads at least 25 widgets and visualizes saved connections for a chosen pa
   const pageSelector = await screen.findByRole('combobox', { name: 'Page connections page' });
   await within(pageSelector).findByRole('option', { name: /Community Info/ });
   await userEvent.selectOptions(pageSelector, '/community-info');
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
   const preview = screen.getByRole('region', { name: 'Selected page layout preview' });
   expect(within(preview).getByRole('heading', { name: 'About announcements' })).toBeInTheDocument();
   expect(within(preview).getByRole('link', { name: 'Open actual page ↗' })).toHaveAttribute('href', '/community-info');
+});
+
+test('opens a body portal without saving, traps focus, and restores focus and scrolling on close', async () => {
+  const { container } = setup(); await screen.findByRole('button', { name: 'Edit About announcements' });
+  const previewButton = screen.getByRole('button', { name: 'Preview', exact: true });
+  // eslint-disable-next-line testing-library/no-node-access
+  expect(screen.getByRole('button', { name: 'Save page layout' }).nextElementSibling).toBe(previewButton);
+  expect(screen.queryByRole('region', { name: 'Selected page layout preview' })).not.toBeInTheDocument();
+  const originalOverflow = document.body.style.overflow, originalPadding = document.body.style.paddingRight;
+  const width = jest.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(window.innerWidth - 20);
+  document.body.style.overflow = 'auto'; document.body.style.paddingRight = '7px';
+  try {
+    await userEvent.click(previewButton); const dialog = screen.getByRole('dialog', { name: 'Page preview' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true'); expect(document.body).toContainElement(dialog); expect(container).not.toContainElement(dialog);
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(dialog.parentElement.parentElement).toBe(document.body);
+    expect(within(dialog).getByRole('heading', { name: 'Home · /' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Open actual page ↗' })).toHaveAttribute('href', '/');
+    expect(document.body.style.overflow).toBe('hidden'); expect(document.body.style.paddingRight).toBe('27px');
+    const close = within(dialog).getByRole('button', { name: 'Close page preview' }); const actualPage = within(dialog).getByRole('link', { name: 'Open actual page ↗' });
+    expect(close).toHaveFocus(); await userEvent.tab({ shift: true }); expect(actualPage).toHaveFocus(); await userEvent.tab(); expect(close).toHaveFocus();
+    previewButton.focus(); expect(close).toHaveFocus(); await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(screen.queryByRole('region', { name: 'Selected page layout preview' })).not.toBeInTheDocument();
+    expect(previewButton).toHaveFocus(); expect(document.body.style.overflow).toBe('auto'); expect(document.body.style.paddingRight).toBe('7px');
+    await userEvent.click(previewButton); await userEvent.click(screen.getByRole('button', { name: 'Close page preview' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(previewButton).toHaveFocus(); expect(widgetPlacementService.save).not.toHaveBeenCalled();
+  } finally { width.mockRestore(); document.body.style.overflow = originalOverflow; document.body.style.paddingRight = originalPadding; }
+});
+
+test('preserves CMS content and unsaved layout selection across previews and only saves explicitly', async () => {
+  require('../../services/cmsService').default.getAllPageContent.mockResolvedValue({ data: { 'community-info': { heroTitle: 'Community Info', heroDescription: 'Welcome to our community', intro: 'Intro', sections: [{ id: 'welcome', title: 'Welcome section' }] } } });
+  setup(); const pageSelector = await screen.findByRole('combobox', { name: 'Page connections page' });
+  await within(pageSelector).findByRole('option', { name: /Community Info/ }); await userEvent.selectOptions(pageSelector, '/community-info');
+  const layoutSelector = screen.getByRole('combobox', { name: 'Page layout' }); const nextLayout = within(layoutSelector).getAllByRole('option').find((option) => option.value !== 'single-column').value;
+  await userEvent.selectOptions(layoutSelector, nextLayout); await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
+  const dialog = screen.getByRole('dialog', { name: 'Page preview' });
+  for (const text of ['Existing CMS page content', 'Welcome to our community', 'Page intro content', 'Welcome section', 'Existing section content']) expect(within(dialog).getByText(text)).toBeInTheDocument();
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Close page preview' }));
+  expect(pageSelector).toHaveValue('/community-info'); expect(layoutSelector).toHaveValue(nextLayout); expect(widgetPlacementService.save).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Save page layout' })); await waitFor(() => expect(widgetPlacementService.save).toHaveBeenCalledTimes(1));
+  expect(widgetPlacementService.save).toHaveBeenCalledWith(expect.objectContaining({ layouts: [{ pagePath: '/community-info', layoutId: nextLayout }] }));
+});
+
+test('cleans up the portal and scroll lock when unmounted while open', async () => {
+  const { unmount } = setup(); await screen.findByRole('button', { name: 'Edit About announcements' });
+  const overflow = document.body.style.overflow, padding = document.body.style.paddingRight;
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true })); unmount();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(document.body.style.overflow).toBe(overflow); expect(document.body.style.paddingRight).toBe(padding); expect(widgetPlacementService.save).not.toHaveBeenCalled();
 });
 
 test('saves a widget with the selected page path and displays the saved visual', async () => {
@@ -43,6 +92,7 @@ test('saves a widget with the selected page path and displays the saved visual',
   await userEvent.click(screen.getByRole('button', { name: /^Community Announcements/ }));
   await userEvent.click(screen.getByRole('button', { name: 'Add to page' }));
   expect(await screen.findByText('Page connections saved.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
   const preview = screen.getByRole('region', { name: 'Selected page layout preview' });
   expect(within(preview).getAllByRole('heading', { name: 'Community Announcements' }).length).toBeGreaterThan(0);
   expect(widgetPlacementService.save).toHaveBeenCalledWith(expect.objectContaining({ placements: expect.arrayContaining([expect.objectContaining({ pagePath: '/community-info', widgetId: 'announcements', slot: 'main' })]) }));
@@ -53,6 +103,7 @@ test('removes a placement persistently from its page preview', async () => {
   const pageSelector = await screen.findByRole('combobox', { name: 'Page connections page' });
   await within(pageSelector).findByRole('option', { name: /Community Info/ });
   await userEvent.selectOptions(pageSelector, '/community-info');
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
   await userEvent.click(screen.getByRole('button', { name: 'Remove Community Announcements from page' }));
   expect(await screen.findByText('Page connections saved.')).toBeInTheDocument();
   expect(widgetPlacementService.save).toHaveBeenCalledWith({ placements: [], layouts: [{ pagePath: '/community-info', layoutId: 'single-column' }] });
@@ -64,6 +115,7 @@ test.each(['#000000', '#ffffff', '#9f1239'])('keeps removal outside the widget o
   const pageSelector = await screen.findByRole('combobox', { name: 'Page connections page' });
   await within(pageSelector).findByRole('option', { name: /Community Info/ });
   await userEvent.selectOptions(pageSelector, '/community-info');
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
   const preview = screen.getByRole('region', { name: 'Selected page layout preview' });
   const remove = within(preview).getByRole('button', { name: 'Remove Community Announcements from page' });
   expect(remove).toBeVisible();
@@ -79,6 +131,7 @@ test('allows removing an image widget even when it has no image', async () => {
   const pageSelector = await screen.findByRole('combobox', { name: 'Page connections page' });
   await within(pageSelector).findByRole('option', { name: /Community Info/ });
   await userEvent.selectOptions(pageSelector, '/community-info');
+  await userEvent.click(screen.getByRole('button', { name: 'Preview', exact: true }));
   await userEvent.click(screen.getByRole('button', { name: 'Remove Photo Only from page' }));
   await waitFor(() => expect(widgetPlacementService.save).toHaveBeenCalledWith({ placements: [], layouts: [{ pagePath: '/community-info', layoutId: 'single-column' }] }));
 });
@@ -115,13 +168,13 @@ test('configures photo dimensions and widget colors, and exposes the standalone 
   expect(screen.getByRole('textbox', { name: 'Rich text content' })).toHaveAttribute('contenteditable', 'true');
 });
 
-test('paginates all category selections by ten and resets to the first page on category changes', async () => {
+test('paginates all category selections by five and resets to the first page on category changes', async () => {
   setup();
   const catalog = screen.getByLabelText('Widget catalog');
   const pagination = screen.getByRole('navigation', { name: 'Widget catalog pagination' });
-  expect(within(catalog).getAllByRole('button')).toHaveLength(10);
+  expect(within(catalog).getAllByRole('button')).toHaveLength(5);
   await userEvent.click(within(pagination).getByRole('button', { name: 'Next' }));
-  expect(within(catalog).getAllByRole('button')).toHaveLength(10);
+  expect(within(catalog).getAllByRole('button')).toHaveLength(5);
   expect(within(pagination).getByRole('status')).toHaveTextContent('Page 2');
   await userEvent.click(screen.getByRole('button', { name: 'Custom', exact: true }));
   expect(within(pagination).getByRole('status')).toHaveTextContent('Page 1 of 1');

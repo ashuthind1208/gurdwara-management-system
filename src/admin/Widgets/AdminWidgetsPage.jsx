@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { widgetCategories, widgetRegistry } from '../../constants/widgetRegistry';
@@ -102,7 +103,68 @@ const WidgetInput = ({ field, value, onChange }) => {
   );
 };
 
+const PagePreviewDialog = ({ children, onClose }) => {
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+  const headingId = useId();
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const { overflow, paddingRight } = document.body.style;
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    if (scrollbarWidth) {
+      document.body.style.paddingRight = `${(parseFloat(window.getComputedStyle(document.body).paddingRight) || 0) + scrollbarWidth}px`;
+    }
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      } else if (event.key === 'Tab') {
+        const controls = [...dialogRef.current.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+          .filter((element) => !element.disabled && element.tabIndex >= 0 && !element.closest('[hidden], [inert], [aria-hidden="true"]'));
+        const index = controls.indexOf(document.activeElement);
+        const nextIndex = event.shiftKey
+          ? (index <= 0 ? controls.length - 1 : index - 1)
+          : (index + 1) % controls.length;
+        event.preventDefault();
+        (controls[nextIndex] || dialogRef.current).focus();
+      }
+    };
+    const containFocus = (event) => {
+      if (!dialogRef.current.contains(event.target)) closeRef.current?.focus();
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('focusin', containFocus);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('focusin', containFocus);
+      document.body.style.overflow = overflow;
+      document.body.style.paddingRight = paddingRight;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 p-4 sm:p-6">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={headingId} tabIndex={-1} data-delete-guard-ignore="true" className="flex max-h-[calc(100dvh-3rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+          <h2 id={headingId} className="text-3xl font-bold text-slate-900">Page preview</h2>
+          <button ref={closeRef} type="button" aria-label="Close page preview" onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-blue"><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-5 sm:p-6">{children}</div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const AdminWidgetsPage = () => {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const closePreview = useCallback(() => setPreviewOpen(false), []);
   const [activeCategory, setActiveCategory] = useState('All');
   const [catalogPage, setCatalogPage] = useState(1);
   const [editingPlacementId, setEditingPlacementId] = useState(null);
@@ -154,8 +216,9 @@ const AdminWidgetsPage = () => {
 
     return widgetRegistry.filter((widget) => !widget.deprecated && widget.category === activeCategory);
   }, [activeCategory]);
-  const catalogPageCount = Math.max(1, Math.ceil(filteredWidgets.length / 10));
-  const visibleWidgets = filteredWidgets.slice((catalogPage - 1) * 10, catalogPage * 10);
+  const catalogPageSize = 5;
+  const catalogPageCount = Math.max(1, Math.ceil(filteredWidgets.length / catalogPageSize));
+  const visibleWidgets = filteredWidgets.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
 
   const selectedWidget = useMemo(
     () => widgetRegistry.find((widget) => widget.id === selectedWidgetId) || widgetRegistry[0],
@@ -246,7 +309,9 @@ const AdminWidgetsPage = () => {
             </select>
           </label>
           <Button type="button" disabled={saveMutation.isPending || isPending || isError} onClick={savePageLayout}>{saveMutation.isPending ? 'Saving…' : 'Save page layout'}</Button>
+          <Button type="button" variant="ghost" aria-haspopup="dialog" onClick={() => setPreviewOpen(true)}>Preview</Button>
         </div>
+        {previewOpen ? <PagePreviewDialog onClose={closePreview}>
         <section aria-label="Selected page layout preview" className="rounded-2xl border bg-slate-50 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="min-w-0 break-words font-bold">{pages.find((page) => page.path === selectedPage)?.label || selectedPage} · {selectedPage}</h3><a href={selectedPage} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-blue">Open actual page ↗</a></div>
           <div className="my-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -270,6 +335,7 @@ const AdminWidgetsPage = () => {
           </div>
           {!savedWidgets.some((entry) => entry.pagePath === selectedPage) && !isPending ? <p className="text-sm text-slate-500">No widgets connected to this page.</p> : null}
         </section>
+        </PagePreviewDialog> : null}
       </Card>
 
       <Card>

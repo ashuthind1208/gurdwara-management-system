@@ -535,10 +535,9 @@ const AdminRolesAccessPage = () => {
       </Card>
 
       <Card>
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="admin-card-header-row mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-heading text-xl font-semibold text-slate-900">Public Titles</h2>
-            <p className="mt-1 text-sm text-slate-600">Titles shown on public member profiles.</p>
           </div>
           <Button type="button" onClick={openAddPublicTitle}>Add Title</Button>
         </div>

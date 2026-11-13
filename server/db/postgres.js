@@ -1545,6 +1545,25 @@ const setSingleton = async (resource, payload) => {
   return result.rows?.[0]?.payload || payload;
 };
 
+// Dedicated bulk operation: callers cannot choose a resource or supply a cutoff.
+const cleanupAuditLogs = async (daysToKeep) => {
+  if (![30, 60, 90, null].includes(daysToKeep)) {
+    throw Object.assign(new Error('Invalid audit retention period.'), { status: 400 });
+  }
+  if (!pool) throw new Error('Database is not configured.');
+  const cutoff = daysToKeep === null ? null : new Date(Date.now() - daysToKeep * 86400000).toISOString();
+  // Format the insertion timestamp in UTC to match payload.createdAt ISO text.
+  const predicate = cutoff === null ? '' : ` AND COALESCE(
+    NULLIF(payload->>'createdAt', ''),
+    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+  ) < $1`;
+  const result = await pool.query(
+    `DELETE FROM app_items WHERE resource = 'audit_logs'${predicate}`,
+    cutoff === null ? [] : [cutoff]
+  );
+  return { deletedCount: Number(result.rowCount), cutoff, daysToKeep };
+};
+
 const listItems = async (resource) => {
   if (!pool) {
     throw new Error('Database is not configured.');
@@ -3641,6 +3660,7 @@ module.exports = {
   ensureEventsSchema,
   getSingleton,
   setSingleton,
+  cleanupAuditLogs,
   listItems,
   searchPublicContent,
   createItem,

@@ -441,15 +441,10 @@ const AdminSchedulePage = () => {
     <div className="space-y-6">
       <div>
         <h1 className="sr-only">Daily Schedule</h1>
-        <p className="mt-1 text-sm text-slate-600">Schedule editing opens in a popup. Use the year table actions to view or edit a day.</p>
       </div>
 
       <Card className="border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-xl font-semibold text-slate-900">365-Day Schedule Table</h2>
-            <p className="text-xs text-slate-500">Each day starts from default schedule. Mark a day as special only when needed.</p>
-          </div>
+        <div role="group" aria-label="Schedule date and filters" className="flex w-full flex-wrap items-end justify-between gap-3">
           <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[180px_auto_auto] sm:items-end">
             <label className="text-sm font-medium text-slate-700">
               <span className="mb-1 block">Pick Date</span>
@@ -463,14 +458,14 @@ const AdminSchedulePage = () => {
             <Button
               type="button"
               variant="primary"
-              className="h-11 rounded-xl px-4 text-slate-900 hover:bg-brand-saffron hover:text-slate-900"
+              className="h-11 rounded-xl px-4 text-white hover:bg-blue-800 hover:text-white"
               onClick={() => openDayModal(quickDateKey, 'view')}
             >
               View Day
             </Button>
             <Button
               type="button"
-              className="h-11 rounded-xl px-4 text-slate-900 hover:bg-brand-saffron hover:text-slate-900"
+              className="h-11 rounded-xl px-4 text-white hover:bg-blue-800 hover:text-white"
               onClick={() => openDayModal(quickDateKey, 'edit')}
             >
               Edit Day
@@ -586,8 +581,8 @@ const AdminSchedulePage = () => {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-500">Showing {(safePage - 1) * pageSize + 1}-{Math.min(safePage * pageSize, filteredYearRows.length)} of {filteredYearRows.length}</p>
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={safePage === 1} className={`${scheduleCompactButtonClass} ${safePage === 1 ? 'cursor-not-allowed opacity-50' : ''}`}>Previous</Button>
-            <Button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={safePage === totalPages} className={`${scheduleCompactButtonClass} ${safePage === totalPages ? 'cursor-not-allowed opacity-50' : ''}`}>Next</Button>
+            <Button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={safePage === 1} className="px-3 py-2 text-xs font-semibold text-white hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Previous</Button>
+            <Button type="button" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={safePage === totalPages} className="px-3 py-2 text-xs font-semibold text-white hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Next</Button>
           </div>
         </div>
       </Card>

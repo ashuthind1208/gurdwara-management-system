@@ -76,7 +76,7 @@ const WelcomeJourneyAdminCard = () => {
   }[settings.canSaveReason] || 'Your account is not authorized to edit Welcome Journey settings.';
   const canReauthenticate = ['google_sign_in_required', 'google_session_expired', 'google_account_mismatch'].includes(settings.canSaveReason);
   return <Card className="border-cyan-200 bg-cyan-50/20">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-heading text-xl font-bold">Welcome page settings</h2><p className="mt-1 max-w-3xl text-sm text-slate-600">Customize the lobby LED board and visitor page. Programs use the CMS schedule; Langar uses your saved dishes below, never the grocery inventory.</p></div><div className="flex gap-2"><a href="/welcome" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-bold text-cyan-900">Preview visitor page</a><a href="/welcome-journey-board" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-bold text-cyan-900">Preview LED board</a></div></div>
+    <div className="flex flex-wrap gap-2"><a href="/welcome" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-bold text-cyan-900">Preview visitor page</a><a href="/welcome-journey-board" target="_blank" rel="noreferrer" className="rounded-lg border border-cyan-300 bg-white px-3 py-2 text-sm font-bold text-cyan-900">Preview LED board</a></div>
     <StatusAlert type={status.type} message={status.message} />
     <form onSubmit={submit} className="mt-4 space-y-4">
       {isError ? <p role="alert" className="text-sm text-rose-700">Unable to load saved settings. Reload before editing.</p> : null}

@@ -29,7 +29,7 @@ const preserveGoogleOAuthCallback = () => {
 
 preserveGoogleOAuthCallback();
 
-if (new URLSearchParams(window.location.search).get('embed') === '1' || window.location.pathname === '/stream-overlay') {
+if (new URLSearchParams(window.location.search).get('embed') === '1' || /^\/stream-overlay(?:\/|$)/.test(window.location.pathname)) {
   document.documentElement.classList.add('board-embed');
 }
 

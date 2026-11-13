@@ -104,6 +104,8 @@ const { createSocialPostingService } = require('./socialPosting');
 const { createLedScreenService } = require('./ledScreenService');
 const { createWhatsAppWebhookHandler } = require('./whatsappWebhook');
 const { createWelcomeJourneyHandler } = require('./welcomeJourneyApi');
+const { createStreamOverlayHandler } = require('./streamOverlayApi');
+const { createAuditCleanupHandler } = require('./auditCleanupApi');
 const { createWidgetPlacementsHandler, projectPublicWidgetPlacements } = require('./widgetPlacements');
 const openWaNotifications = createOpenWaNotifications({ db: eventsDb });
 const langarBoardEventClients = new Set();
@@ -6423,6 +6425,8 @@ const ledScreenService = createLedScreenService({
   isAdmin: canManageDonations
 });
 const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson });
+const streamOverlayHandler = createStreamOverlayHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
+const auditCleanupHandler = createAuditCleanupHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
 const welcomeJourneyHandler = createWelcomeJourneyHandler({
   eventsDb,
   getGurdwaraBranding,
@@ -6558,6 +6562,9 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (await auditCleanupHandler(request, response, requestUrl)) return;
+  if (await streamOverlayHandler(request, response, requestUrl)) return;
+
   if (requestUrl.pathname === '/api/stream-overlay/settings' && request.method === 'GET') {
     try {
       assertInput(eventsDb.hasDatabaseConnection, 'Stream overlay settings are temporarily unavailable.', 503);
@@ -6577,7 +6584,8 @@ const server = http.createServer(async (request, response) => {
       const allowedKeys = [
         'overlayOn', 'overlayLogo', 'overlayLanguages', 'overlayOpacity', 'gurmukhiSize', 'punjabiSize', 'englishSize',
         'overlayAnnouncement', 'overlayHeaderMessage', 'headerSize', 'headerPunjabiSize', 'punjabiAnnouncement', 'headerPunjabi',
-        'upperEnglish', 'upperPunjabi', 'upperSpeed', 'lowerSpeed', 'tickerColors', 'upperSize', 'lowerSize', 'overlayThemeId'
+        'upperEnglish', 'upperPunjabi', 'upperSpeed', 'lowerSpeed', 'tickerColors', 'upperSize', 'lowerSize', 'overlayThemeId',
+        'headerBackgroundColor', 'headerBorderColor'
       ];
       ensureNoUnknownKeys(body, allowedKeys);
       const booleans = ['overlayOn', 'overlayLogo'];
@@ -6599,7 +6607,19 @@ const server = http.createServer(async (request, response) => {
       assertInput(body.tickerColors && typeof body.tickerColors === 'object' && !Array.isArray(body.tickerColors), 'tickerColors must be an object.');
       const tickerColorKeys = ['upperbg', 'upperfg', 'lowerbg', 'lowerfg'];
       ensureNoUnknownKeys(body.tickerColors, tickerColorKeys);
-      tickerColorKeys.forEach((key) => assertInput(/^#[0-9a-f]{6}$/i.test(String(body.tickerColors[key] || '')), `tickerColors.${key} must be a hex color.`));
+      tickerColorKeys.forEach((key) => assertInput(typeof body.tickerColors[key] === 'string' && (body.tickerColors[key] === '' || (body.tickerColors[key].length === 7 && /^#[0-9a-f]{6}$/i.test(body.tickerColors[key]))), `tickerColors.${key} must be a six-digit hex color or blank.`));
+      const headerColorKeys = ['headerBackgroundColor', 'headerBorderColor'];
+      headerColorKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(body, key)) {
+          assertInput(typeof body[key] === 'string' && (body[key] === '' || (body[key].length === 7 && /^#[0-9a-f]{6}$/i.test(body[key]))), `${key} must be a six-digit hex color or blank.`);
+        }
+      });
+      // Older clients omit these optional fields; keep saved overrides rather than clearing them.
+      const existing = headerColorKeys.some((key) => !Object.prototype.hasOwnProperty.call(body, key))
+        ? await eventsDb.getSingleton('stream_overlay_settings', {}) : {};
+      headerColorKeys.forEach((key) => {
+        if (!Object.prototype.hasOwnProperty.call(body, key)) body[key] = existing?.[key] ?? '';
+      });
       const data = await eventsDb.setSingleton('stream_overlay_settings', body);
       sendJson(response, 200, { ok: true, data });
     } catch (error) {
@@ -7921,7 +7941,7 @@ const server = http.createServer(async (request, response) => {
 
   const contentGuardMatch = requestUrl.pathname.match(/^\/api\/content(?:-single)?\/([a-z0-9_-]+)/i);
   if (contentGuardMatch && (recitationService.isProtectedResource(contentGuardMatch[1])
-    || ['stream_overlay_settings', 'community_announcement_submissions', 'site_navigation', 'gurdwara_branding', 'ask_granthi_branding'].includes(contentGuardMatch[1].toLowerCase()))) {
+    || ['stream_overlay_settings', 'stream_overlay_profiles', 'community_announcement_submissions', 'site_navigation', 'gurdwara_branding', 'ask_granthi_branding'].includes(contentGuardMatch[1].toLowerCase()))) {
     sendJson(response, 404, { ok: false, message: 'Not found.' });
     return;
   }

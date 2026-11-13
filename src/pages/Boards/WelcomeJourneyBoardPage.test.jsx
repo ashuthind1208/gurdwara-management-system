@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WelcomeJourneyBoardPage from './WelcomeJourneyBoardPage';
@@ -56,6 +56,21 @@ test('polls branding every 15 seconds and updates board and card colors without 
     client.clear();
     jest.useRealTimers();
   }
+});
+
+test('program and langar use translucent blue glass with white text while the QR retains its own surface', async () => {
+  render(<QueryClientProvider client={new QueryClient()}><WelcomeJourneyBoardPage /></QueryClientProvider>);
+  await screen.findByRole('heading', { name: 'Welcome home' });
+  await waitFor(() => expect(screen.getByTestId('welcome-qr')).toHaveAttribute('data-fg-color', '#123456'));
+  for (const name of ['Today’s program', 'Langar today']) {
+    // eslint-disable-next-line testing-library/no-node-access
+    const section = screen.getByRole('heading', { name }).closest('section');
+    expect(section).toHaveStyle({ backgroundColor: '#12345699', borderColor: '#ffffff40', color: '#ffffff' });
+    // jsdom does not expose backdrop-filter through getComputedStyle.
+    expect(section.style.backdropFilter).toBe('blur(18px)');
+    expect(within(section).getByRole('heading')).toHaveStyle({ color: '#ffffff' });
+  }
+  expect(screen.getByRole('complementary')).toHaveStyle({ backgroundColor: '#F0E1D2', color: '#102030' });
 });
 
 test('hides directions and dish names but keeps service time, langar note and QR when menu is hidden', async () => {
