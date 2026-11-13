@@ -139,7 +139,6 @@ const LedBoardControlCard = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-heading text-xl font-semibold">LED Board Slideshow</h2>
-          <p className="mt-1 text-sm text-slate-600">Choose which boards the LED screen plays and how long each stays on screen. Changes apply automatically; nothing needs to be restarted.</p>
         </div>
         <a href={`/led-boards?screen=${selectedScreen}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue/30 px-3 py-2 text-sm font-semibold text-brand-blue hover:bg-blue-50"><ArrowTopRightOnSquareIcon className="h-4 w-4" /> Open {selectedScreenInfo.label}</a>
       </div>

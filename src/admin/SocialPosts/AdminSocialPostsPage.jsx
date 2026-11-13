@@ -289,7 +289,7 @@ const AdminSocialPostsPage = () => {
 
       <Card>
         <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
-          <h2 className="text-2xl font-bold text-slate-900">Posters</h2>
+          <h2 className="text-2xl font-bold text-slate-900" style={{ borderBottom: 0, marginBottom: 0, paddingBottom: 0 }}>Posters</h2>
           <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white">
             <Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />Automatic posting
           </button>

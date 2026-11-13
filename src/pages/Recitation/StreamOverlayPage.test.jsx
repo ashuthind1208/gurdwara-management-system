@@ -1,4 +1,4 @@
-import { render as baseRender, screen, waitFor } from '@testing-library/react';
+import { act, render as baseRender, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import StreamOverlayPage from './StreamOverlayPage';
 import { useRecitationLive, useRecitationText } from '../../hooks/useRecitation';
@@ -11,6 +11,7 @@ const render = (ui, options = {}) => baseRender(ui, {
 });
 
 jest.mock('../../services/streamOverlaySettings', () => ({
+  ...jest.requireActual('../../services/streamOverlaySettings'),
   getPublishedStreamOverlaySettings: jest.fn()
 }));
 
@@ -20,7 +21,10 @@ jest.mock('../../hooks/useRecitation', () => ({
 }));
 
 jest.mock('../../context/BrandingContext', () => ({
-  BRANDING_PRESETS: [],
+  BRANDING_PRESETS: [
+    { id: 'heritage', primaryColor: '#14532d', accentColor: '#c89b3c' },
+    { id: 'other', primaryColor: '#123456', accentColor: '#abcdef' }
+  ],
   useBranding: jest.fn()
 }));
 
@@ -49,6 +53,111 @@ describe('StreamOverlayPage', () => {
     expect(window.location.search).toBe('');
   });
 
+  test('loads a channel-specific header and uploaded logo from its slug', async () => {
+    window.history.replaceState({}, '', '/stream-overlay/channel-one');
+    getPublishedStreamOverlaySettings.mockResolvedValue({ id: 'one', isActive: true, overlayOn: true, logoUrl: '/api/uploads/cms/channel.png', overlayHeaderMessage: 'Channel one diwan' });
+    render(<StreamOverlayPage />);
+    expect(await screen.findByText('Channel one diwan')).toBeInTheDocument();
+    expect(getPublishedStreamOverlaySettings).toHaveBeenCalledWith('channel-one');
+    expect(screen.getByAltText('')).toHaveAttribute('src', '/api/uploads/cms/channel.png');
+  });
+
+  test.each(['/stream-overlay', '/stream-overlay/channel-one'])('published header colors apply only to the header at %s', async (path) => {
+    window.history.replaceState({}, '', `${path}?headerBackgroundColor=%23000000&headerBorderColor=%23ffffff`);
+    getPublishedStreamOverlaySettings.mockResolvedValue({ id: 'one', isActive: true, overlayOn: true, overlayThemeId: 'brand-colors', overlayHeaderMessage: 'Custom header colors', headerBackgroundColor: '#123456', headerBorderColor: '#abcdef', upperEnglish: 'Upper message', overlayAnnouncement: 'Lower message' });
+    render(<StreamOverlayPage />); await screen.findByText('Custom header colors');
+    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: '#123456' });
+    const css = screen.getByRole('main').textContent;
+    expect(css.match(/\.stream-overlay-header\{[^}]+\}/)[0]).toContain('solid #abcdef');
+    expect(screen.getByRole('region', { name: 'Live Gurbani broadcast footer' })).toHaveStyle({ backgroundColor: '#004080' });
+    expect(css.match(/\.stream-overlay-footer\{[^}]+\}/)[0]).toContain('solid #F89820');
+    expect(css.match(/\.stream-overlay-logo\{[^}]+\}/)[0]).toContain('border:2px solid #F89820');
+    expect(screen.getByText(/\d{1,2}:\d{2}/)).toHaveStyle({ color: '#F89820' });
+    expect(screen.getByText('ਗੁਰਬਾਣੀ ਦੀ ਪੰਕਤੀ')).toHaveStyle({ color: '#F89820' });
+    expect(screen.getByLabelText('Upper footer announcement ticker')).toHaveStyle({ backgroundColor: '#004080', color: '#ffffff' });
+    expect(screen.getByLabelText('Footer announcement ticker')).toHaveStyle({ backgroundColor: '#F89820', color: '#004080' });
+    expect(css).toContain('--overlay-header-height:clamp(80px,12vh,140px);--overlay-header-padding:clamp(12px,1.6vh,24px)');
+    expect(css).toContain('padding:var(--overlay-header-padding) 4vw');
+    expect(css).toContain('--overlay-header-height:clamp(72px,12vh,112px)'); expect(css).toContain('padding-block:var(--overlay-header-padding)');
+  });
+
+  test.each([
+    [{ headerBackgroundColor: '#123456' }, '#123456', '#F89820'],
+    [{ headerBorderColor: '#abcdef' }, '#004080', '#abcdef'],
+    [{ headerBackgroundColor: '', headerBorderColor: '' }, '#004080', '#F89820'],
+    [{}, '#004080', '#F89820'],
+    [{ headerBackgroundColor: '#fff', headerBorderColor: 'red' }, '#004080', '#F89820'],
+    [{ headerBackgroundColor: '#123456\n', headerBorderColor: 123456 }, '#004080', '#F89820']
+  ])('header colors independently use explicit valid colors or the selected theme: %j', async (colors, background, border) => {
+    getPublishedStreamOverlaySettings.mockResolvedValue({ overlayOn: true, overlayThemeId: 'brand-colors', overlayHeaderMessage: 'Color fallback', ...colors });
+    render(<StreamOverlayPage />); await screen.findByText('Color fallback');
+    expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: background });
+    expect(screen.getByRole('main').textContent.match(/\.stream-overlay-header\{[^}]+\}/)[0]).toContain(`solid ${border}`);
+  });
+
+  test.each(['/stream-overlay', '/stream-overlay/channel-one'])('footer inheritance follows theme changes while custom colors survive at %s', async (path) => {
+    window.history.replaceState({}, '', path);
+    const client = new QueryClient(); const key = ['published-stream-overlay-settings', path === '/stream-overlay' ? '' : 'channel-one'];
+    const initial = { id: 'one', isActive: true, overlayOn: true, overlayThemeId: 'heritage', upperEnglish: 'Theme upper', overlayAnnouncement: 'Theme lower', tickerColors: { upperbg: '#004080', upperfg: '#ffffff', lowerbg: '#F89820', lowerfg: '#004080' } };
+    getPublishedStreamOverlaySettings.mockResolvedValue(initial);
+    render(<StreamOverlayPage />, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+    await waitFor(() => expect(screen.getByLabelText('Upper footer announcement ticker')).toHaveStyle({ backgroundColor: '#14532d', color: '#ffffff' }));
+    const upper = screen.getByLabelText('Upper footer announcement ticker'); const lower = screen.getByLabelText('Footer announcement ticker');
+    expect(lower).toHaveStyle({ backgroundColor: '#c89b3c', color: '#14532d' });
+    const custom = { ...initial, overlayThemeId: 'other', headerBackgroundColor: '#654321', tickerColors: { upperbg: '', upperfg: '#112233', lowerbg: '#004080', lowerfg: '' } };
+    await act(async () => { client.setQueryData(key, custom); });
+    await waitFor(() => expect(upper).toHaveStyle({ backgroundColor: '#123456', color: '#112233' })); expect(lower).toHaveStyle({ backgroundColor: '#004080', color: '#123456' });
+    await act(async () => { client.setQueryData(key, { ...custom, overlayThemeId: 'heritage' }); });
+    await waitFor(() => expect(upper).toHaveStyle({ backgroundColor: '#14532d', color: '#112233' })); expect(lower).toHaveStyle({ backgroundColor: '#004080', color: '#14532d' }); expect(screen.getByRole('banner')).toHaveStyle({ backgroundColor: '#654321' });
+  });
+
+  test('explicit ticker query colors override normalized published colors, not stray top-level settings', async () => {
+    window.history.replaceState({}, '', '/stream-overlay?upperbg=%23010203&lowerfg=%23abcdef');
+    getPublishedStreamOverlaySettings.mockResolvedValue({ overlayOn: true, overlayThemeId: 'heritage', upperEnglish: 'Query upper', overlayAnnouncement: 'Query lower', upperfg: '#000000', tickerColors: { upperbg: '', upperfg: '', lowerbg: '', lowerfg: '' } }); render(<StreamOverlayPage />);
+    await waitFor(() => expect(screen.getByLabelText('Upper footer announcement ticker')).toHaveStyle({ backgroundColor: '#010203', color: '#ffffff' })); expect(screen.getByLabelText('Footer announcement ticker')).toHaveStyle({ backgroundColor: '#c89b3c', color: '#abcdef' });
+  });
+
+  test('inactive named channels stay transparent even with on=1', async () => {
+    window.history.replaceState({}, '', '/stream-overlay/channel-one?on=1');
+    getPublishedStreamOverlaySettings.mockResolvedValue({ id: 'one', isActive: false, overlayOn: false }); render(<StreamOverlayPage />);
+    await waitFor(() => expect(getPublishedStreamOverlaySettings).toHaveBeenCalledWith('channel-one')); expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+  });
+
+  test.each([
+    [{ displayName: 'Community Milton', displayAddress: '12 Community Road' }, 'Community Milton', '12 Community Road'],
+    [{ displayName: 'Community Milton' }, 'Community Milton', '123 Example Road'],
+    [{ displayAddress: '12 Community Road' }, 'Example Gurdwara', '12 Community Road'],
+    [{ displayName: '', displayAddress: '' }, 'Example Gurdwara', '123 Example Road'],
+    [{ displayName: '   ', displayAddress: '  ' }, 'Example Gurdwara', '123 Example Road'],
+    [{}, 'Example Gurdwara', '123 Example Road']
+  ])('named identity uses independent custom fields or branding fallback: %j', async (identity, name, address) => {
+    window.history.replaceState({}, '', '/stream-overlay/channel-one');
+    getPublishedStreamOverlaySettings.mockResolvedValue({ id: 'one', isActive: true, overlayOn: true, ...identity }); render(<StreamOverlayPage />);
+    await screen.findByRole('banner'); expect(screen.getByText(name, { exact: true })).toBeInTheDocument(); expect(screen.getByText(address, { exact: true })).toBeInTheDocument(); expect(screen.getByAltText('')).toHaveAttribute('src', '/logo.png');
+  });
+
+  test('default overlay ignores named identity metadata and retains existing branding behavior', async () => {
+    getPublishedStreamOverlaySettings.mockResolvedValue({ overlayOn: true, displayName: 'Unwanted Milton', displayAddress: 'Unwanted address', overlayHeaderMessage: 'Loaded default' }); render(<StreamOverlayPage />);
+    await screen.findByText('Loaded default'); expect(screen.getByText('Example Gurdwara', { exact: true })).toBeInTheDocument(); expect(screen.getByText('123 Example Road', { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText('Unwanted Milton')).not.toBeInTheDocument(); expect(screen.queryByText('Unwanted address')).not.toBeInTheDocument();
+  });
+
+  test('does not display default branding content for an unknown channel', async () => {
+    window.history.replaceState({}, '', '/stream-overlay/missing?on=1'); getPublishedStreamOverlaySettings.mockResolvedValue({}); render(<StreamOverlayPage />);
+    await waitFor(() => expect(getPublishedStreamOverlaySettings).toHaveBeenCalledWith('missing')); expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+  });
+
+  test('fits the transparent video area to actual rendered header and ticker footer heights', async () => {
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      if (this.classList?.contains('stream-overlay-header')) return { height: 126 };
+      if (this.classList?.contains('stream-overlay-footer')) return { height: 318 };
+      return original.call(this);
+    };
+    try { render(<StreamOverlayPage />); await waitFor(() => expect(screen.getByRole('main')).toHaveStyle({ '--overlay-center-top': '126px', '--overlay-center-bottom': '318px' })); }
+    finally { HTMLElement.prototype.getBoundingClientRect = original; }
+  });
+
   test('published visibility overrides a stale local hidden flag', async () => {
     window.localStorage.setItem('ssm-stream-overlay-visible', '0');
     getPublishedStreamOverlaySettings.mockResolvedValue({ overlayOn: true });
@@ -72,17 +181,17 @@ describe('StreamOverlayPage', () => {
     expect(screen.getByText(/\d{1,2}:\d{2}/)).toBeInTheDocument();
     expect(screen.queryByText('LIVE · SYNCED')).not.toBeInTheDocument();
     expect(screen.getByRole('banner', { name: 'Gurdwara broadcast header' })).toBeInTheDocument();
-    expect(screen.getByRole('main')).toHaveStyle({ '--overlay-middle-background': 'transparent' });
+    expect(screen.getByRole('main')).toHaveStyle({ '--overlay-center-color': 'transparent' });
     expect(screen.getByRole('region', { name: 'Live Gurbani broadcast footer' })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: 'Live Gurbani broadcast overlay' })).toHaveStyle({ background: 'transparent' });
   });
 
   test('keeps the recitation footer content-sized without an automatic ticker spacer', () => {
     window.history.replaceState({}, '', '/stream-overlay?announcement=1&message=Welcome');
-    const { container } = render(<StreamOverlayPage />);
-    expect(getComputedStyle(container.querySelector('.stream-overlay-footer')).minHeight).toBe('0');
-    expect(getComputedStyle(container.querySelector('.stream-overlay-ticker-stack')).marginTop).toBe('0px');
-    expect(getComputedStyle(container.querySelector('.stream-overlay-lines')).flexShrink).toBe('0');
+    render(<StreamOverlayPage />);
+    expect(getComputedStyle(screen.getByRole('region', { name: 'Live Gurbani broadcast footer' })).minHeight).toBe('0');
+    expect(screen.getByRole('main').textContent).toMatch(/\.stream-overlay-ticker-stack\{margin-top:0;/);
+    expect(screen.getByRole('main').textContent).toMatch(/\.stream-overlay-lines\{[^}]*flex-shrink:0/);
   });
 
   test('never renders connection status in the broadcast header', () => {

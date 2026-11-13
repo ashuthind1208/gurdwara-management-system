@@ -617,8 +617,7 @@ const AdminNewsletterPage = () => {
       </div>
 
       <Card className="overflow-hidden border border-slate-200 bg-gradient-to-b from-white via-slate-50/40 to-blue-50/30 shadow-sm">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 px-4 pb-4 pt-3 shadow-[0_8px_26px_-22px_rgba(15,23,42,0.5)]">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-blue via-blue-600 to-brand-saffron" aria-hidden="true" />
+        <div>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Subscribers</h2>
@@ -766,8 +765,7 @@ const AdminNewsletterPage = () => {
       </Card>
 
       <Card className="overflow-hidden border border-slate-200 bg-gradient-to-b from-white via-slate-50/30 to-brand-blue/5 shadow-sm">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 px-4 pb-4 pt-3 shadow-[0_8px_26px_-22px_rgba(15,23,42,0.5)]">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-700 via-brand-blue to-brand-saffron" aria-hidden="true" />
+        <div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Newsletter History</h2>

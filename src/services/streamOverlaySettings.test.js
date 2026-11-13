@@ -1,4 +1,4 @@
-import { DEFAULT_STREAM_OVERLAY_SETTINGS, getPublishedStreamOverlaySettings, publishStreamOverlaySettings, readStreamOverlaySettings, saveStreamOverlaySettings, STREAM_OVERLAY_SETTINGS_KEY, STREAM_OVERLAY_SETTINGS_URL } from './streamOverlaySettings';
+import { DEFAULT_STREAM_OVERLAY_SETTINGS, getPublishedStreamOverlaySettings, normalizeTickerColors, publishStreamOverlaySettings, readStreamOverlaySettings, saveStreamOverlaySettings, STREAM_OVERLAY_SETTINGS_KEY, STREAM_OVERLAY_SETTINGS_URL } from './streamOverlaySettings';
 import apiClient from './apiClient';
 
 jest.mock('./apiClient', () => ({ put: jest.fn() }));
@@ -15,7 +15,7 @@ const createStorage = (initial = {}) => {
 test('loads defaults and persists overlay settings across reloads', () => {
   const storage = createStorage();
   expect(readStreamOverlaySettings(storage)).toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS);
-  const changed = { ...DEFAULT_STREAM_OVERLAY_SETTINGS, upperEnglish: 'Welcome sangat', upperSpeed: 42, overlayOpacity: 68 };
+  const changed = { ...DEFAULT_STREAM_OVERLAY_SETTINGS, upperEnglish: 'Welcome sangat', upperSpeed: 42, overlayOpacity: 68, headerBackgroundColor: '#123456', headerBorderColor: '#abcdef' };
   expect(saveStreamOverlaySettings(changed, storage)).toBe(true);
   expect(JSON.parse(storage.getItem(STREAM_OVERLAY_SETTINGS_KEY))).toEqual(changed);
   expect(readStreamOverlaySettings(storage)).toEqual(changed);
@@ -26,6 +26,20 @@ test('invalid saved JSON safely falls back to defaults and nested colors merge',
   expect(readStreamOverlaySettings(storage)).toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS);
   storage.setItem(STREAM_OVERLAY_SETTINGS_KEY, JSON.stringify({ tickerColors: { upperbg: '#123456' } }));
   expect(readStreamOverlaySettings(storage).tickerColors).toEqual({ ...DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors, upperbg: '#123456' });
+  expect(readStreamOverlaySettings(storage)).toEqual(expect.objectContaining({ headerBackgroundColor: '', headerBorderColor: '' }));
+});
+
+const legacyPalette = { upperbg: '#004080', upperfg: '#ffffff', lowerbg: '#F89820', lowerfg: '#004080' };
+
+test('ticker defaults inherit and only the complete legacy palette migrates on load', () => {
+  expect(DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors).toEqual({ upperbg: '', upperfg: '', lowerbg: '', lowerfg: '' });
+  const load = (tickerColors) => readStreamOverlaySettings(createStorage({ [STREAM_OVERLAY_SETTINGS_KEY]: JSON.stringify({ tickerColors }) })).tickerColors;
+  expect(load(legacyPalette)).toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors);
+  expect(load({ ...legacyPalette, lowerbg: '#f89820' })).toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors);
+  expect(load({ ...legacyPalette, upperbg: '#123456' })).toEqual({ ...legacyPalette, upperbg: '#123456' });
+  expect(load({ upperbg: '#004080' })).toEqual({ ...DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors, upperbg: '#004080' });
+  expect(normalizeTickerColors(legacyPalette)).toEqual(legacyPalette);
+  expect(normalizeTickerColors({ upperbg: '#123456\n', upperfg: null, lowerbg: '#abc' })).toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS.tickerColors);
 });
 
 describe('published overlay settings', () => {
@@ -51,5 +65,11 @@ describe('published overlay settings', () => {
     apiClient.put.mockResolvedValue({ data: { data: DEFAULT_STREAM_OVERLAY_SETTINGS } });
     await expect(publishStreamOverlaySettings(DEFAULT_STREAM_OVERLAY_SETTINGS)).resolves.toEqual(DEFAULT_STREAM_OVERLAY_SETTINGS);
     expect(apiClient.put).toHaveBeenCalledWith('/stream-overlay/settings', DEFAULT_STREAM_OVERLAY_SETTINGS);
+  });
+
+  test('reads one named channel without affecting the legacy URL', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { id: 'channel' } }) });
+    await expect(getPublishedStreamOverlaySettings('channel-one')).resolves.toEqual({ id: 'channel' });
+    expect(global.fetch).toHaveBeenCalledWith('/api/stream-overlay/public/channel-one', expect.objectContaining({ cache: 'no-store' }));
   });
 });

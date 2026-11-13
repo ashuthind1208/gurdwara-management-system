@@ -325,12 +325,7 @@ const AdminAdvertisementsPage = () => {
       <h1 className="sr-only">Advertisements</h1>
 
       <Card>
-        <div>
-          <h2 className="font-heading text-xl font-semibold">Advertisements Table</h2>
-          <p className="mt-1 text-sm text-slate-600">View, edit, delete, and toggle active status directly from this table.</p>
-        </div>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-4">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 md:col-span-2">
             Search
             <input

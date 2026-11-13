@@ -204,7 +204,7 @@ const AdminBookingDutiesPage = () => {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="-mt-3 space-y-3">
       {notifyMutation.isPending ? (
         <div className="fixed inset-0 z-[170] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]">
           <div className="w-full max-w-sm rounded-2xl border border-brand-blue/20 bg-white p-5 text-center shadow-2xl" role="status" aria-live="polite">
@@ -231,15 +231,15 @@ const AdminBookingDutiesPage = () => {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h1 className="font-heading text-2xl font-semibold text-slate-900">Booking Duties</h1><p className="mt-1 text-sm text-slate-600">Confirmed programmes, locations, contacts, and timing for the assigned duty team.</p></div>
-        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1" aria-label="Booking duty view">
-          <button type="button" onClick={() => setView('list')} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'list' ? 'bg-brand-blue text-white' : 'text-slate-700'}`}><ListBulletIcon className="h-4 w-4" />List</button>
-          <button type="button" onClick={() => setView('calendar')} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'calendar' ? 'bg-brand-blue text-white' : 'text-slate-700'}`}><CalendarDaysIcon className="h-4 w-4" />Calendar</button>
+      <section data-ui-card className="min-w-0 space-y-3 rounded-xl border border-slate-200 p-3 shadow-sm" aria-label="Booking duty controls">
+        <div className="flex justify-end">
+          <div className="inline-flex rounded-lg border border-slate-300 bg-white p-1" role="group" aria-label="Booking duty view">
+            <button type="button" onClick={() => setView('list')} aria-pressed={view === 'list'} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'list' ? 'bg-brand-blue text-white' : 'text-slate-700'}`}><ListBulletIcon className="h-4 w-4" />List</button>
+            <button type="button" onClick={() => setView('calendar')} aria-pressed={view === 'calendar'} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'calendar' ? 'bg-brand-blue text-white' : 'text-slate-700'}`}><CalendarDaysIcon className="h-4 w-4" />Calendar</button>
+          </div>
         </div>
-      </div>
 
-      <section className="hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm xl:block" aria-label="Filter booking duties">
+      <section className="hidden overflow-x-auto xl:block" aria-label="Filter booking duties">
         <div className="flex min-w-max flex-nowrap items-end gap-2">
           <label className="relative w-44 shrink-0"><span className="sr-only">Search duties</span><MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><input type="search" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search duties..." className="h-9 w-full rounded-md border border-slate-300 pl-8 pr-2 text-xs focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/15" /></label>
           <label className="w-32 shrink-0"><span className="sr-only">Duty performer</span><select value={filters.assigneeId} onChange={(event) => setFilters((current) => ({ ...current, assigneeId: event.target.value }))} className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs"><option value="">All performers</option>{assigneeOptions.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label>
@@ -251,7 +251,7 @@ const AdminBookingDutiesPage = () => {
         </div>
       </section>
 
-      <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm xl:hidden" aria-label="Mobile booking duty filters">
+      <section className="min-w-0 xl:hidden" aria-label="Mobile booking duty filters">
         <button type="button" onClick={() => setMobileFiltersOpen((open) => !open)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-800" aria-expanded={mobileFiltersOpen} aria-controls="mobile-booking-duty-filters"><span className="inline-flex items-center gap-2"><FunnelIcon className="h-4 w-4 text-brand-blue" />Filters</span><span className="text-xs text-slate-500">{mobileFiltersOpen ? 'Close' : 'Open'}</span></button>
         {mobileFiltersOpen ? <div id="mobile-booking-duty-filters" className="grid min-w-0 gap-3 border-t border-slate-100 p-4 sm:grid-cols-2">
           <label className="relative min-w-0 sm:col-span-2"><span className="sr-only">Search duties</span><MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input type="search" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search duties..." className="h-9 w-full min-w-0 rounded-md border border-slate-300 pl-9 pr-3 text-sm focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/15" /></label>
@@ -262,6 +262,8 @@ const AdminBookingDutiesPage = () => {
           <label className="min-w-0 text-xs font-semibold text-slate-600">To<input type="date" value={filters.toDate} onChange={(event) => setFilters((current) => ({ ...current, toDate: event.target.value }))} className="mt-1 block h-9 w-full min-w-0 rounded-md border border-slate-300 px-2 text-sm font-normal text-slate-800" /></label>
           <div className="flex min-w-0 gap-2 sm:col-span-2"><button type="button" onClick={() => setFilters({ search: '', assigneeId: '', fromDate: '', toDate: '', programme: '', sort: 'date-asc' })} className="h-9 flex-1 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Reset</button><button type="button" onClick={() => setMobileFiltersOpen(false)} className="h-9 flex-1 rounded-md bg-brand-blue px-3 text-sm font-semibold text-white transition hover:bg-blue-800">Done</button></div>
         </div> : null}
+      </section>
+
       </section>
 
       {emailError ? <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{emailError}</p> : null}

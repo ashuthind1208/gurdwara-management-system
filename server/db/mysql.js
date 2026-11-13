@@ -146,6 +146,26 @@ const setSingleton = async (resource, payload) => {
   return payload;
 };
 
+// Dedicated bulk operation: callers cannot choose a resource or supply a cutoff.
+const cleanupAuditLogs = async (daysToKeep) => {
+  if (![30, 60, 90, null].includes(daysToKeep)) {
+    throw Object.assign(new Error('Invalid audit retention period.'), { status: 400 });
+  }
+  const cutoff = daysToKeep === null ? null : new Date(Date.now() - daysToKeep * 86400000).toISOString();
+  // Compare ISO text to ISO text, not an ISO JSON string to a SQL date string.
+  // created_at is the insertion timestamp, never updated_at (which changes on edits).
+  // Rebuild UTC from its epoch: the driver's timezone option does not set the SQL session timezone.
+  const predicate = cutoff === null ? '' : ` AND COALESCE(
+    NULLIF(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.createdAt')), 'null'), ''),
+    CONCAT(LEFT(DATE_FORMAT(TIMESTAMPADD(MICROSECOND, UNIX_TIMESTAMP(created_at) * 1000000, '1970-01-01 00:00:00'), '%Y-%m-%dT%H:%i:%s.%f'), 23), 'Z')
+  ) < ?`;
+  const [result] = await requirePool().execute(
+    `DELETE FROM app_items WHERE resource = 'audit_logs'${predicate}`,
+    cutoff === null ? [] : [cutoff]
+  );
+  return { deletedCount: Number(result.affectedRows), cutoff, daysToKeep };
+};
+
 const listItems = async (resource) => {
   const normalized = normalizeResource(resource);
   // Audit tables show metadata only; saved content snapshots can contain large media data.
@@ -800,6 +820,7 @@ module.exports = {
   ensureEventsSchema,
   getSingleton,
   setSingleton,
+  cleanupAuditLogs,
   listItems,
   searchPublicContent,
   createItem,

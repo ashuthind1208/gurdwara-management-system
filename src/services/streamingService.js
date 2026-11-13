@@ -37,7 +37,7 @@ export const validateStreamingSource = (value = '') => {
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
       return 'Use a public HTTP(S) viewing URL, not an RTMP address or private stream key.';
     }
-    if (url.pathname.replace(/\/$/, '') === '/stream-overlay') {
+    if (/^\/stream-overlay(?:\/|$)/.test(url.pathname)) {
       return 'Use the broadcast viewing URL. The overlay URL contains text only, not live video.';
     }
     return true;

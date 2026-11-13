@@ -1101,6 +1101,9 @@ const AdminLayout = () => {
               ) : null}
             </div>
           </div>
+          {location.pathname === '/admin/booking-duties' ? (
+            <p className="mt-1 text-sm text-slate-600">Confirmed programmes, locations, contacts, and timing for the assigned duty team.</p>
+          ) : null}
         </div>
         <Outlet context={{ setHeaderAction }} />
 

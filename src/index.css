@@ -381,6 +381,74 @@ html[data-custom-text='true']:not(.dark) .text-slate-700 { color: var(--brand-te
   font-weight: 700;
 }
 
+/* Admin-only card treatment. Public cards and viewport/preview surfaces stay unchanged. */
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border) {
+  --admin-card-accent: #2563eb;
+  --admin-card-tint: #eff6ff;
+  border-top-width: 4px;
+  border-top-color: var(--admin-card-accent);
+  background-color: var(--admin-card-tint);
+  background-image: linear-gradient(135deg, var(--admin-card-tint), #ffffff);
+}
+
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border):nth-of-type(5n + 2) {
+  --admin-card-accent: #0891b2;
+  --admin-card-tint: #ecfeff;
+}
+
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border):nth-of-type(5n + 3) {
+  --admin-card-accent: #8b5cf6;
+  --admin-card-tint: #f5f3ff;
+}
+
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border):nth-of-type(5n + 4) {
+  --admin-card-accent: #d97706;
+  --admin-card-tint: #fffbeb;
+}
+
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border):nth-of-type(5n + 5) {
+  --admin-card-accent: #059669;
+  --admin-card-tint: #ecfdf5;
+}
+
+.dark .admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border, fieldset.rounded-lg.border) {
+  background-color: #1e293b;
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--admin-card-accent) 15%, #1e293b), #1e293b);
+}
+
+/* Card titles, including headings inside a card's action/header row. */
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border) > :is(h2, h3, h4),
+.admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border) > div > :is(h2, h3, h4),
+.admin-main-content :is([data-ui-card], .admin-dashboard-card) > div > div > h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.dark .admin-main-content :is([data-ui-card], .admin-dashboard-card, section.rounded-2xl.border, section.rounded-xl.border) :is(h2, h3, h4) {
+  border-bottom-color: #475569;
+}
+
+.admin-main-content .admin-card-header-row {
+  width: 100%;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.admin-main-content .admin-card-header-row.admin-card-header-row :is(h2, h3, h4) {
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.dark .admin-main-content .admin-card-header-row {
+  border-bottom-color: #475569;
+}
+
 .admin-dashboard-shell,
 .admin-dashboard-shell section,
 .admin-dashboard-shell .admin-dashboard-card {

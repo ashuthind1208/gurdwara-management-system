@@ -581,7 +581,7 @@ const AdminLangarPage = () => {
       <h1 className="sr-only">Seva Items</h1>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="admin-card-header-row flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-heading text-xl font-semibold text-brand-blue">Langar Commitments</h2>
             <p className="mt-1 text-xs text-slate-500">Review contributor commitments and mark supplies received.</p>

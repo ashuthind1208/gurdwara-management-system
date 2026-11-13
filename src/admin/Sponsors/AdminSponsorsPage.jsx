@@ -224,12 +224,7 @@ const AdminSponsorsPage = () => {
       <h1 className="sr-only">Sponsors</h1>
 
       <Card>
-        <div>
-          <h2 className="font-heading text-xl font-semibold">Sponsors Table</h2>
-          <p className="mt-1 text-sm text-slate-600">Manage event sponsor names shown on the donation board footer ticker.</p>
-        </div>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 md:col-span-2">
             Search
             <input

@@ -133,6 +133,7 @@ const AppRoutes = () => {
         <Route path="/hukamnama-board" element={<LedEmergencyGuard><LedHukamnamaBoardPage /></LedEmergencyGuard>} />
         <Route path="/recitation-board" element={<LedEmergencyGuard><RecitationLedBoardPage /></LedEmergencyGuard>} />
         <Route path="/stream-overlay" element={<LedEmergencyGuard><StreamOverlayPage /></LedEmergencyGuard>} />
+        <Route path="/stream-overlay/:slug" element={<LedEmergencyGuard><StreamOverlayPage /></LedEmergencyGuard>} />
         <Route path="/follow" element={<RecitationFollowPage />} />
         <Route path="/follow/:sessionId" element={<RecitationFollowPage />} />
         <Route path="/granthi-remote" element={<GranthiRemotePage />} />

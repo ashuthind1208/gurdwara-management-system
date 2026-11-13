@@ -1,17 +1,112 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import Card from '../../components/ui/Card';
 import auditService from '../../services/auditService';
 
 const PAGE_SIZE = 20;
 
+const CleanupConfirmation = ({ daysToKeep, pending, error, onClose, onConfirm }) => {
+  const dialogRef = useRef(null);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    const dialog = dialogRef.current;
+    const focusable = () => [...dialog.querySelectorAll('button:not(:disabled)')];
+    const focusFirst = () => (focusable()[0] || dialog).focus();
+    document.body.style.overflow = 'hidden';
+    focusFirst();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!pendingRef.current) onClose();
+      }
+      if (event.key === 'Tab') {
+        const elements = focusable();
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (!first) {
+          event.preventDefault();
+          dialog.focus();
+        } else if (!dialog.contains(document.activeElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
+      }
+    };
+    const onFocus = (event) => { if (!dialog.contains(event.target)) focusFirst(); };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocus);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [onClose]);
+  useEffect(() => { if (pending) dialogRef.current?.focus(); }, [pending]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/65 p-4">
+      <section ref={dialogRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="audit-cleanup-title" aria-describedby="audit-cleanup-description" aria-busy={pending} data-delete-guard-ignore="true" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-red-200 bg-white p-6 shadow-2xl">
+        <h3 id="audit-cleanup-title" className="text-xl font-semibold text-slate-900">Confirm audit trail deletion</h3>
+        <p id="audit-cleanup-description" className="mt-3 text-sm text-slate-700">
+          {daysToKeep === null
+            ? 'Permanently delete the entire audit trail, including all recent entries. No audit entries will be retained.'
+            : `Permanently delete audit entries older than ${daysToKeep} days. Entries from the last ${daysToKeep} days will be retained. The cutoff is calculated by the server when deletion runs.`}
+          {' '}This cannot be undone. This applies to all audit entries in this scope, not just the current search or page. No other records will be deleted.
+        </p>
+        {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
+        {pending ? <p role="status" className="mt-3 text-sm text-slate-600">Deleting audit entries… Please wait.</p> : null}
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" disabled={pending} onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm disabled:opacity-50">Cancel</button>
+          <button type="button" disabled={pending} onClick={onConfirm} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Permanently delete</button>
+        </div>
+      </section>
+    </div>, document.body
+  );
+};
+
 const AdminAuditTrailPage = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const { data: logs = [] } = useQuery({
+  const [retention, setRetention] = useState('30');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const [cleanupError, setCleanupError] = useState('');
+  const [success, setSuccess] = useState('');
+  const closeConfirmation = useCallback(() => setConfirmOpen(false), []);
+  const { data: logs = [], isPending, isError, refetch } = useQuery({
     queryKey: ['admin-audit-logs'],
     queryFn: () => auditService.getLogs().then((res) => res.data)
   });
+  const daysToKeep = retention === 'all' ? null : Number(retention);
+  const cleanup = async () => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    setCleanupError('');
+    setSuccess('');
+    try {
+      const { data } = await auditService.cleanupLogs(daysToKeep);
+      setSuccess(`Deleted ${data.deletedCount} audit ${data.deletedCount === 1 ? 'entry' : 'entries'}.`);
+      setPage(1);
+      try {
+        await refetch({ throwOnError: true });
+      } catch {
+        setCleanupError('Deletion completed, but the audit trail could not be refreshed. Reload the page to see the current trail.');
+      }
+      setConfirmOpen(false);
+    } catch (error) {
+      setCleanupError(error.message || 'Unable to delete audit entries.');
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const needle = String(search || '').trim().toLowerCase();
@@ -57,6 +152,29 @@ const AdminAuditTrailPage = () => {
         </div>
       </Card>
 
+      <Card className="border border-red-200 bg-white">
+        <h3 className="font-semibold text-slate-900">Audit trail cleanup</h3>
+        <p className="mt-1 text-sm text-slate-600">Permanently delete older entries or the entire trail. This is a one-time action, not an automatic retention policy.</p>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="text-sm font-medium text-slate-700">
+            Entries to delete
+            <select value={retention} disabled={pending || confirmOpen} onChange={(event) => setRetention(event.target.value)} className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 disabled:opacity-50">
+              <option value="30">Older than 30 days</option>
+              <option value="60">Older than 60 days</option>
+              <option value="90">Older than 90 days</option>
+              <option value="all">Entire audit trail</option>
+            </select>
+          </label>
+          <button type="button" disabled={pending} data-delete-guard-ignore="true" onClick={() => { setCleanupError(''); setSuccess(''); setConfirmOpen(true); }} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Delete audit trail</button>
+        </div>
+        {success ? <p role="status" className="mt-3 text-sm text-green-800">{success}</p> : null}
+        {cleanupError && !confirmOpen ? <p role="alert" className="mt-3 text-sm text-red-700">{cleanupError}</p> : null}
+      </Card>
+
+      {confirmOpen ? <CleanupConfirmation daysToKeep={daysToKeep} pending={pending} error={cleanupError} onClose={closeConfirmation} onConfirm={cleanup} /> : null}
+      {isPending ? <p role="status">Loading audit trail…</p> : null}
+      {isError ? <p role="alert">Unable to load the audit trail. Please reload or try again.</p> : null}
+      {!isPending && !isError ? (
       <Card className="border border-slate-200 bg-white">
         <div className="hidden overflow-x-auto xl:block">
           <table className="min-w-full text-left text-sm">
@@ -126,6 +244,7 @@ const AdminAuditTrailPage = () => {
           </div>
         </div>
       </Card>
+      ) : null}
     </div>
   );
 };
