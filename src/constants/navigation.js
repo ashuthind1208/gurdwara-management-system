@@ -45,5 +45,6 @@ export const adminNav = [
   { label: 'Audit Trail', path: '/admin/audit-trail' },
   { label: 'Roles and Access', path: '/admin/roles-access' },
   { label: 'Users', path: '/admin/users' },
-  { label: 'Gurdwara Branding', path: '/admin/gurdwara-branding' }
+  { label: 'Gurdwara Branding', path: '/admin/gurdwara-branding' },
+  { label: 'Landing Page', path: '/admin/inauguration' }
 ];

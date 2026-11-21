@@ -1,13 +1,15 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LedEmergencyGuard from '../components/boards/LedEmergencyGuard';
-import PublicLayout from '../layouts/PublicLayout';
+import InaugurationHomeLayout from '../layouts/InaugurationHomeLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import AutoReloadOnNewBuild from '../components/boards/AutoReloadOnNewBuild';
 import { userRoles } from '../constants/siteConfig';
 
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
+const InaugurationPage = lazy(() => import('../pages/Inauguration/InaugurationPage'));
+const AdminInaugurationPage = lazy(() => import('../admin/Inauguration/AdminInaugurationPage'));
 const AboutPage = lazy(() => import('../pages/About/AboutPage'));
 const SikhismPage = lazy(() => import('../pages/Sikhism/SikhismPage'));
 const GurbaniLibraryPage = lazy(() => import('../pages/GurbaniLibrary/GurbaniLibraryPage'));
@@ -91,8 +93,9 @@ const AppRoutes = () => {
     <Suspense fallback={<LoadingFallback />}>
       <AutoReloadOnNewBuild />
       <Routes>
-        <Route element={<PublicLayout />}>
+        <Route element={<InaugurationHomeLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/sikhism" element={<SikhismPage />} />
           <Route path="/gurbani-library" element={<GurbaniLibraryPage />} />
@@ -115,6 +118,7 @@ const AppRoutes = () => {
           <Route path="*" element={<CustomCmsPage />} />
         </Route>
 
+        <Route path="/inauguration-preview" element={<InaugurationPage preview />} />
         <Route path="/welcome" element={<WelcomeJourneyPage />} />
         <Route path="/donationsuccess" element={<DonationSuccessPage />} />
         <Route path="/quick-donate" element={<QuickDonatePage />} />
@@ -144,6 +148,7 @@ const AppRoutes = () => {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/cms" element={<AdminCmsPage />} />
+            <Route path="/admin/inauguration" element={<AdminInaugurationPage />} />
             <Route element={<ProtectedRoute allowedRoles={ROLES_ACCESS_ALLOWED_ROLES} allowAssignedAdminAccess={false} />}>
               <Route path="/admin/widgets" element={<AdminWidgetsPage />} />
               <Route path="/admin/welcome-journey" element={<AdminWelcomeJourneyPage />} />

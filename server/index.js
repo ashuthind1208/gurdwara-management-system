@@ -97,6 +97,7 @@ const { createSocialPostingService } = require('./socialPosting');
 const { createLedScreenService } = require('./ledScreenService');
 const { createWhatsAppWebhookHandler } = require('./whatsappWebhook');
 const { createWelcomeJourneyHandler } = require('./welcomeJourneyApi');
+const { createInaugurationHandler } = require('./inaugurationApi');
 const { createStreamOverlayHandler } = require('./streamOverlayApi');
 const { createAuditCleanupHandler } = require('./auditCleanupApi');
 const { createWidgetPlacementsHandler, projectPublicWidgetPlacements } = require('./widgetPlacements');
@@ -598,6 +599,7 @@ const withNormalizedInlineEmailLogo = (htmlBody = '', attachments = []) => {
 const ADMIN_PAGE_PATHS = [
   '/admin',
   '/admin/cms',
+  '/admin/inauguration',
   '/admin/news',
   '/admin/schedule',
   '/admin/hukamnama',
@@ -6399,6 +6401,7 @@ const ledScreenService = createLedScreenService({
 const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getRequestActor, parseJsonObjectBody, sendJson });
 const streamOverlayHandler = createStreamOverlayHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
 const auditCleanupHandler = createAuditCleanupHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
+const inaugurationHandler = createInaugurationHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
 const welcomeJourneyHandler = createWelcomeJourneyHandler({
   eventsDb,
   getGurdwaraBranding,
@@ -6452,6 +6455,10 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === 'OPTIONS') {
     sendJson(response, 204, {});
+    return;
+  }
+
+  if (await inaugurationHandler(request, response, requestUrl)) {
     return;
   }
 
@@ -8435,7 +8442,7 @@ const server = http.createServer(async (request, response) => {
   if (contentSingleMatch && request.method === 'PUT') {
     try {
       const resource = String(contentSingleMatch[1]).toLowerCase();
-      assertInput(resource !== 'widget_placements' && resource !== 'welcome_journey_settings', 'Use the dedicated validated endpoint to update this resource.', 403);
+      assertInput(resource !== 'widget_placements' && resource !== 'welcome_journey_settings' && resource !== 'inauguration_settings', 'Use the dedicated validated endpoint to update this resource.', 403);
       if (resource === 'booking_duty_settings') {
         assertInput(canManageBookingDuties(request), 'Only Admin and Super Admin can assign booking duties.', 403);
       }
