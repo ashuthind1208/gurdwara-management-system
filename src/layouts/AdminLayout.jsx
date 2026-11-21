@@ -419,6 +419,7 @@ const getNotificationToneClasses = (entry, isRead) => {
 const iconByPath = {
   '/admin': Squares2X2Icon,
   '/admin/cms': RectangleGroupIcon,
+  '/admin/inauguration': SparklesIcon,
   '/admin/widgets': RectangleGroupIcon,
   '/admin/welcome-journey': SparklesIcon,
   '/admin/news': NewspaperIcon,
@@ -526,8 +527,9 @@ const AdminLayout = () => {
   const visibleNav = hasFullAccess
     ? roleVisibleAdminNav
     : roleVisibleAdminNav.filter((item) => limitedAccessPaths.includes(item.path));
-  const primaryVisibleNav = visibleNav.filter((item) => item.path !== '/admin/gurdwara-branding');
+  const primaryVisibleNav = visibleNav.filter((item) => !['/admin/gurdwara-branding', '/admin/inauguration'].includes(item.path));
   const brandingNavItem = visibleNav.find((item) => item.path === '/admin/gurdwara-branding');
+  const landingNavItem = visibleNav.find((item) => item.path === '/admin/inauguration');
   const adminSearchItems = useMemo(() => {
     const allowedPaths = new Set(visibleNav.map((item) => String(item.path || '').trim()).filter(Boolean));
     const pageItems = visibleNav
@@ -986,6 +988,11 @@ const AdminLayout = () => {
               </NavLink>
             </div>
           ) : null}
+          {landingNavItem ? (
+            <NavLink to={landingNavItem.path} className={({ isActive }) => `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-brand-blue text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+              <span className="inline-flex items-center gap-2"><SparklesIcon className="h-4 w-4" /><span>{landingNavItem.label}</span></span>
+            </NavLink>
+          ) : null}
         </nav>
       </aside>
       <main className="admin-main-content min-w-0 overflow-x-hidden p-4 md:p-8">
@@ -1196,6 +1203,11 @@ const AdminLayout = () => {
                     <span className="inline-flex items-center gap-2"><SwatchIcon className="h-4 w-4" /><span>{brandingNavItem.label}</span></span>
                   </NavLink>
                 </div>
+              ) : null}
+              {landingNavItem ? (
+                <NavLink to={landingNavItem.path} onClick={() => setMobileNavOpen(false)} className={({ isActive }) => `rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-brand-blue text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+                  <span className="inline-flex items-center gap-2"><SparklesIcon className="h-4 w-4" /><span>{landingNavItem.label}</span></span>
+                </NavLink>
               ) : null}
             </nav>
           </aside>
