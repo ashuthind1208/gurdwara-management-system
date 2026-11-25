@@ -1,8 +1,13 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import InaugurationPage from './InaugurationPage';
 import inaugurationService, { normalizeInaugurationSettings } from '../../services/inaugurationService';
 import { useBranding } from '../../context/BrandingContext';
+import inaugurationVisitorService from '../../services/inaugurationVisitorService';
+import AudioPillPlayer from '../../components/common/AudioPillPlayer';
+
+jest.mock('../../components/common/AudioPillPlayer', () => ({ __esModule: true, default: jest.fn(() => <div>Darbar Sahib audio</div>) }));
+jest.mock('../../services/inaugurationVisitorService', () => ({ __esModule: true, default: { load: jest.fn() } }));
 
 jest.mock('../../context/BrandingContext', () => ({ useBranding: jest.fn() }));
 jest.mock('../../services/inaugurationService', () => ({
@@ -21,6 +26,7 @@ const renderSaved = () => {
 };
 
 beforeEach(() => {
+  inaugurationVisitorService.load.mockResolvedValue(42);
   useBranding.mockReturnValue({ branding: { organizationName: 'Our Gurdwara' }, logoSrc: '/branding-logo.png' });
   inaugurationService.getSettings.mockResolvedValue(makeSettings());
 });
@@ -35,7 +41,9 @@ test('draft renders disabled settings without a query provider or API call, pres
   expect(english.textContent).toBe('First line\nSecond line');
   expect(english).toHaveClass('whitespace-pre-wrap');
   expect(screen.getByText(/ਪਹਿਲੀ ਲਾਈਨ/).textContent).toBe('ਪਹਿਲੀ ਲਾਈਨ\nਦੂਜੀ ਲਾਈਨ');
-  expect(screen.getByRole('img')).toHaveStyle({ width: '200px', height: '200px' });
+  expect(screen.getByRole('img')).toHaveStyle({ width: '400px', height: '400px' });
+  expect(screen.getByRole('img')).toHaveClass('mb-8');
+  expect(screen.getByText('Visitors · Preview')).toHaveClass('justify-self-center', 'text-xl');
   expect(inaugurationService.getSettings).not.toHaveBeenCalled();
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
 });
@@ -131,6 +139,51 @@ test('button group stays centered and wraps as draft buttons are added', () => {
   rerender(<InaugurationPage settings={makeSettings({ buttons: Array.from({ length: 5 }, (_, index) => button(index + 1)) })} />);
   expect(screen.getAllByRole('link')).toHaveLength(5);
   expect(screen.getByRole('group', { name: 'Landing page buttons' })).toHaveClass('justify-center', 'flex-wrap');
+});
+
+test('calendar dates appear above a content-only ticker without legacy image or links', () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-24T17:00:00Z'));
+  render(<InaugurationPage settings={makeSettings({ occasion: {
+    enabled: true, date: '2026-11-24', titleEnglish: 'Guru Nanak Gurpurab', titlePunjabi: 'ਗੁਰਪੁਰਬ',
+    descriptionEnglish: 'Join the sangat.', descriptionPunjabi: 'ਜੀ ਆਇਆਂ ਨੂੰ', imageUrl: '/uploads/occasion.jpg',
+    links: [{ labelEnglish: 'Learn more', url: 'https://example.com/occasion' }]
+  } })} />);
+  expect(screen.getByRole('region', { name: 'Special occasion ticker' })).toHaveClass('occasion-ticker-draft');
+  expect(screen.getAllByText('November 24, 2026').length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/9 Maghar 558 Nanakshahi/).length).toBeGreaterThan(0);
+  expect(screen.queryByRole('img', { name: 'Guru Nanak Gurpurab' })).not.toBeInTheDocument();
+  const ticker = screen.getByRole('region', { name: 'Special occasion ticker' });
+  expect(within(ticker).queryByText('November 24, 2026')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Toronto local time/)).not.toBeInTheDocument();
+  expect(inaugurationVisitorService.load).not.toHaveBeenCalled();
+});
+
+test('public ticker sticks to bottom with custom colors and reserves its height', () => {
+  render(<InaugurationPage draft={false} settings={makeSettings({ occasion: { enabled: true, titleEnglish: 'Today', backgroundColor: '#123456', textColor: '#FEDCBA', fontSize: 24, height: 100 } })} />);
+  const ticker = screen.getByRole('region', { name: 'Special occasion ticker' });
+  expect(ticker).toHaveClass('occasion-ticker-fixed');
+  expect(ticker).toHaveStyle({ backgroundColor: '#123456', color: '#FEDCBA', fontSize: '24px' });
+  fireEvent.click(screen.getByRole('button', { name: 'Pause occasion ticker' }));
+  expect(screen.getByRole('button', { name: 'Resume occasion ticker' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('saved preview reads counter without registering a visit', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><InaugurationPage preview /></QueryClientProvider>);
+  expect(await screen.findByText('Visitors · 42')).toBeInTheDocument();
+  expect(inaugurationVisitorService.load).toHaveBeenCalledWith(false);
+  expect(inaugurationVisitorService.load).not.toHaveBeenCalledWith(true);
+  expect(AudioPillPlayer).toHaveBeenLastCalledWith(expect.objectContaining({ autoPlay: false, initialVolume: 0.5 }), undefined);
+  client.clear();
+});
+
+test('actual landing page registers an anonymous visit and displays the count', async () => {
+  render(<InaugurationPage settings={makeSettings()} draft={false} />);
+  expect(await screen.findByText('Visitors · 42')).toBeInTheDocument();
+  expect(inaugurationVisitorService.load).toHaveBeenCalledWith(true);
+  expect(AudioPillPlayer).toHaveBeenLastCalledWith(expect.objectContaining({ autoPlay: true, initialVolume: 0.5, stream: true }), undefined);
 });
 
 test('saved settings poll every 15 seconds', async () => {

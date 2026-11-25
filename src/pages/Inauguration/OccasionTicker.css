@@ -1,0 +1,16 @@
+.occasion-ticker { display: flex; align-items: center; gap: 12px; padding: 0 16px; width: 100%; box-sizing: border-box; border-top: 1px solid currentColor; }
+.occasion-ticker-fixed { position: fixed; inset: auto 0 0; z-index: 60; }
+.occasion-ticker-draft { position: absolute; inset: auto 0 0; }
+.occasion-ticker-window { overflow: hidden; min-width: 0; flex: 1; }
+.occasion-ticker-track { display: flex; width: max-content; animation: occasion-ticker-scroll 70s linear infinite; }
+.occasion-ticker-group { display: flex; flex: none; }
+.occasion-ticker-copy { display: flex; flex: none; align-items: center; gap: 24px; white-space: nowrap; padding-right: 24px; }
+.occasion-ticker-window:focus-within .occasion-ticker-track,
+.occasion-ticker-paused .occasion-ticker-track { animation-play-state: paused; }
+.occasion-ticker-paused { overflow-x: auto; }
+@keyframes occasion-ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .occasion-ticker-track { animation: none; }
+  .occasion-ticker-window { overflow-x: auto; }
+  .occasion-ticker-copy[aria-hidden], .occasion-ticker-group[aria-hidden] { display: none; }
+}

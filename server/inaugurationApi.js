@@ -1,4 +1,10 @@
 const INAUGURATION_SETTINGS_RESOURCE = 'inauguration_settings';
+const DEFAULT_OCCASION = Object.freeze({
+  enabled: false, date: '', titleEnglish: '', titlePunjabi: '',
+  descriptionEnglish: '', descriptionPunjabi: '', imageUrl: '', links: Object.freeze([]),
+  contentEnglish: '', contentPunjabi: '',
+  backgroundColor: '#071B36', textColor: '#FFFFFF', fontSize: 20, height: 80, speed: 60
+});
 const DEFAULT_INAUGURATION_SETTINGS = Object.freeze({
   enabled: false,
   backgroundColor: '#071B36',
@@ -10,7 +16,8 @@ const DEFAULT_INAUGURATION_SETTINGS = Object.freeze({
   headingPunjabi: 'ਉਦਘਾਟਨ ਸਮਾਗਮ ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ',
   messageEnglish: 'A new beginning for our sangat. Join us in celebrating faith, seva, and community.',
   messagePunjabi: 'ਸੰਗਤ ਲਈ ਇੱਕ ਨਵੀਂ ਸ਼ੁਰੂਆਤ। ਆਓ ਮਿਲ ਕੇ ਸੇਵਾ ਅਤੇ ਸੰਗਤ ਦਾ ਜਸ਼ਨ ਮਨਾਈਏ।',
-  buttons: Object.freeze([])
+  buttons: Object.freeze([]),
+  occasion: DEFAULT_OCCASION
 });
 
 const check = (condition, message, status = 400) => {
@@ -66,10 +73,56 @@ const timestamp = (value, field) => {
 };
 
 // PUT is a full replacement: omitted settings use defaults, not a previous save.
+const validateOccasion = (input) => {
+  check(isObject(input), 'occasion must be an object.');
+  check(Object.keys(input).every((key) => Object.hasOwn(DEFAULT_OCCASION, key)), 'occasion contains an unknown field.');
+  const occasion = { ...DEFAULT_OCCASION, ...input };
+  check(typeof occasion.enabled === 'boolean', 'occasion.enabled must be a boolean.');
+  for (const field of ['backgroundColor', 'textColor']) {
+    occasion[field] = text(occasion[field], `occasion.${field}`, 7, true);
+    check(/^#[0-9a-f]{6}$/i.test(occasion[field]), `occasion.${field} must be a six-digit hex color.`);
+  }
+  for (const [field, min, max] of [['fontSize', 12, 40], ['height', 48, 160], ['speed', 10, 200]]) {
+    check(Number.isInteger(occasion[field]) && occasion[field] >= min && occasion[field] <= max, `occasion.${field} must be an integer from ${min} to ${max}.`);
+  }
+  occasion.date = text(occasion.date, 'occasion.date', 10);
+  if (occasion.date) {
+    const match = occasion.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    check(Boolean(match), 'occasion.date must be a real YYYY-MM-DD date or blank.');
+    const [, year, month, day] = match.map(Number);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    check(year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= days, 'occasion.date must be a real YYYY-MM-DD date or blank.');
+  }
+  for (const field of ['titleEnglish', 'titlePunjabi']) occasion[field] = text(occasion[field], `occasion.${field}`, 200);
+  for (const field of ['descriptionEnglish', 'descriptionPunjabi']) occasion[field] = text(occasion[field], `occasion.${field}`, 2000);
+  for (const language of ['English', 'Punjabi']) {
+    const field = `content${language}`;
+    // Only absent content migrates legacy text; an explicit empty string stays empty.
+    const value = Object.hasOwn(input, field) ? input[field]
+      : [occasion[`title${language}`], occasion[`description${language}`]].filter(Boolean).join('\n');
+    occasion[field] = text(value, `occasion.${field}`, 4000);
+  }
+  check(!occasion.enabled || Boolean(occasion.contentEnglish || occasion.contentPunjabi), 'Enabled occasion needs English or Punjabi content.');
+  occasion.imageUrl = safeUrl(occasion.imageUrl, 'occasion.imageUrl', true);
+  check(Array.isArray(occasion.links) && occasion.links.length <= 4, 'occasion.links must be an array with at most 4 entries.');
+  occasion.links = occasion.links.map((link, index) => {
+    const field = `occasion.links[${index}]`;
+    check(isObject(link), `${field} must be an object.`);
+    check(Object.keys(link).every((key) => ['labelEnglish', 'labelPunjabi', 'url'].includes(key)), `${field} contains an unknown field.`);
+    const url = safeUrl(link.url, `${field}.url`);
+    check(/^https?:\/\//i.test(url), `${field}.url must be an external HTTP(S) URL.`);
+    return { labelEnglish: text(link.labelEnglish, `${field}.labelEnglish`, 120, true),
+      labelPunjabi: text(Object.hasOwn(link, 'labelPunjabi') ? link.labelPunjabi : '', `${field}.labelPunjabi`, 120), url };
+  });
+  return occasion;
+};
+
 const validateInaugurationSettings = (input) => {
   check(isObject(input), 'Settings must be a JSON object.');
   check(Object.keys(input).every((key) => Object.hasOwn(DEFAULT_INAUGURATION_SETTINGS, key)), 'Settings contain an unknown field.');
   const settings = { ...DEFAULT_INAUGURATION_SETTINGS, ...input };
+  settings.occasion = validateOccasion(settings.occasion);
   check(typeof settings.enabled === 'boolean', 'enabled must be a boolean.');
   for (const field of ['backgroundColor', 'textColor', 'accentColor']) {
     settings[field] = text(settings[field], field, 7, true);

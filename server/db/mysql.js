@@ -56,6 +56,10 @@ const nowIso = () => new Date().toISOString();
 const ensureEventsSchema = async () => {
   const db = requirePool();
   const statements = [
+    `CREATE TABLE IF NOT EXISTS landing_page_visitors (
+      visitor_hash CHAR(64) PRIMARY KEY,
+      created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+    ) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin`,
     `CREATE TABLE IF NOT EXISTS app_singletons (
       resource VARCHAR(191) PRIMARY KEY,
       payload JSON NOT NULL,
@@ -123,6 +127,21 @@ const ensureEventsSchema = async () => {
     }
   }
   return true;
+};
+
+const getLandingVisitorCount = async () => {
+  const [rows] = await requirePool().execute('SELECT COUNT(*) AS count FROM landing_page_visitors');
+  return Number(rows[0].count);
+};
+
+const registerLandingVisitor = async (hash) => {
+  if (typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash)) throw new Error('Invalid visitor hash.');
+  await requirePool().execute(
+    `INSERT INTO landing_page_visitors(visitor_hash) VALUES (?)
+     ON DUPLICATE KEY UPDATE visitor_hash = visitor_hash`,
+    [hash]
+  );
+  return getLandingVisitorCount();
 };
 
 const getSingleton = async (resource, fallback = null) => {
@@ -818,6 +837,8 @@ const getDataCounts = async () => {
 module.exports = {
   hasDatabaseConnection: Boolean(pool),
   ensureEventsSchema,
+  registerLandingVisitor,
+  getLandingVisitorCount,
   getSingleton,
   setSingleton,
   cleanupAuditLogs,

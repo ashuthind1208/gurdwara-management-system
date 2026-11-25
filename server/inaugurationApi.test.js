@@ -6,6 +6,101 @@ const vm = require('node:vm');
 const { createInaugurationHandler, validateInaugurationSettings, DEFAULT_INAUGURATION_SETTINGS, INAUGURATION_SETTINGS_RESOURCE } = require('./inaugurationApi');
 
 const endpoint = '/api/inauguration/settings';
+const occasionLink = (overrides = {}) => ({ labelEnglish: 'Learn more', url: 'https://example.test/occasion', ...overrides });
+
+test('occasion defaults preserve legacy settings and partial occasion config roundtrips without sharing arrays', async () => {
+  const api = harness({ saved: { enabled: true, headingEnglish: 'Legacy' } });
+  const legacy = await api.invoke();
+  assert.equal(legacy.body.data.headingEnglish, 'Legacy');
+  assert.deepEqual(legacy.body.data.occasion, DEFAULT_INAUGURATION_SETTINGS.occasion);
+  legacy.body.data.occasion.links.push(occasionLink());
+  assert.equal(DEFAULT_INAUGURATION_SETTINGS.occasion.links.length, 0);
+  const result = await api.invoke({ occasion: { enabled: true, titleEnglish: ' Celebration ', date: '2028-02-29', imageUrl: '/api/uploads/photo.png', links: [occasionLink()] } }, 'PUT');
+  assert.equal(result.status, 200);
+  assert.equal(result.body.data.occasion.titleEnglish, 'Celebration');
+  assert.equal(result.body.data.occasion.imageUrl, '/api/uploads/photo.png');
+  assert.equal(result.body.data.occasion.backgroundColor, '#071B36');
+  assert.equal(result.body.data.occasion.textColor, '#FFFFFF');
+  assert.equal(result.body.data.occasion.fontSize, 20);
+  assert.equal(result.body.data.occasion.height, 80);
+  assert.equal(result.body.data.occasion.speed, 60);
+  assert.equal(result.body.data.occasion.contentEnglish, 'Celebration');
+  assert.equal(result.body.data.occasion.links[0].labelPunjabi, '');
+  assert.deepEqual((await api.invoke()).body.data, result.body.data);
+  assert.deepEqual((await api.invoke({}, 'PUT')).body.data.occasion, DEFAULT_INAUGURATION_SETTINGS.occasion);
+});
+
+test('occasion nested validation rejects invalid fields, real dates, types, labels and unsafe URLs before writes', async () => {
+  const invalid = [null, [], false, { extra: true }, JSON.parse('{"__proto__":{}}'), { enabled: 'true' }, { enabled: true },
+    ...[null, '2026-02-29', '2026-04-31', '0000-01-01', '2026-13-01', '2026-01-00', '2026-1-01', '2026-11-24T00:00:00Z'].map((date) => ({ date })),
+    ...['titleEnglish', 'titlePunjabi', 'descriptionEnglish', 'descriptionPunjabi'].flatMap((field) => [{ [field]: null }, { [field]: 'x'.repeat(field.startsWith('title') ? 201 : 2001) }]),
+    ...['contentEnglish', 'contentPunjabi'].flatMap((field) => [null, 1, {}, false, 'x'.repeat(4001)].map((value) => ({ [field]: value }))),
+    ...['/home/image.png', '//evil.test', '/uploads/%252e%252e/secret', '/%252fevil.test', 'data:image/png,x', 'https://user:pass@example.test/x', '/bad%zz', null].map((imageUrl) => ({ imageUrl })),
+    { links: null }, { links: Array(5).fill(occasionLink()) },
+    ...[null, [], occasionLink({ extra: true }), occasionLink({ labelEnglish: '' }), occasionLink({ labelEnglish: 'x'.repeat(121) }), occasionLink({ labelPunjabi: null }), occasionLink({ labelPunjabi: 'x'.repeat(121) }),
+      ...['/home', '//evil.test', 'https://user@example.test', 'https://example.test/%252e%252e/x', ['javascript', 'alert(1)'].join(':'), 'https://', 'https://example.test/%0a', 'https://example.test/bad%zz'].map((url) => occasionLink({ url }))].map((link) => ({ links: [link] }))];
+  for (const occasion of invalid) {
+    const api = harness();
+    assert.equal((await api.invoke({ occasion }, 'PUT')).status, 400, JSON.stringify(occasion));
+    assert.equal(api.calls.some(([kind]) => kind === 'set'), false);
+  }
+  for (const date of ['', '2024-02-29', '2000-02-29', '2026-11-24']) assert.equal(validateInaugurationSettings({ occasion: { date } }).occasion.date, date);
+  assert.equal(validateInaugurationSettings({ occasion: { links: Array(4).fill(occasionLink()) } }).occasion.links.length, 4);
+});
+test('ticker style values roundtrip, accept inclusive bounds and strictly reject invalid values before writes', async () => {
+  for (const [fontSize, height, speed] of [[12, 48, 10], [40, 160, 200], [20, 80, 60]]) {
+    const api = harness();
+    const result = await api.invoke({ occasion: { backgroundColor: ' #aBc123 ', textColor: '#FEDCBA', fontSize, height, speed } }, 'PUT');
+    assert.equal(result.status, 200);
+    assert.equal(result.body.data.occasion.backgroundColor, '#aBc123');
+    assert.equal(result.body.data.occasion.textColor, '#FEDCBA');
+    assert.equal(result.body.data.occasion.fontSize, fontSize);
+    assert.equal(result.body.data.occasion.height, height);
+    assert.equal(result.body.data.occasion.speed, speed);
+    assert.deepEqual((await api.invoke()).body.data, result.body.data);
+  }
+  const invalid = [
+    ...['backgroundColor', 'textColor'].flatMap((field) => ['red', '#fff', '#12345678', '#GGGGGG', '', null, 123456, {}, false].map((value) => ({ [field]: value }))),
+    ...[['fontSize', 11, 41], ['height', 47, 161], ['speed', 9, 201]].flatMap(([field, below, above]) => [below, above, 20.5, '20', null, false, {}, NaN, Infinity].map((value) => ({ [field]: value })))
+  ];
+  for (const occasion of invalid) {
+    const api = harness();
+    const result = await api.invoke({ occasion }, 'PUT');
+    assert.equal(result.status, 400, JSON.stringify(occasion));
+    assert.match(result.body.message, /occasion\.(backgroundColor|textColor|fontSize|height|speed)/);
+    assert.equal(api.calls.some(([kind]) => kind === 'set'), false);
+    assert.equal((await harness({ saved: { occasion } }).invoke()).status, 503);
+  }
+});
+test('occasion content migrates absent legacy text, accepts either language and preserves legacy contract', async () => {
+  const legacy = { enabled: true, titleEnglish: ' Legacy ', titlePunjabi: 'ਸਮਾਗਮ', descriptionEnglish: ' First\nSecond ', descriptionPunjabi: 'ਜੀ ਆਇਆਂ ਨੂੰ', links: [occasionLink()] };
+  for (const occasion of [legacy, { enabled: true, titlePunjabi: 'ਸਮਾਗਮ' }, { enabled: true, contentEnglish: ' English\nOnly ' }, { enabled: true, contentPunjabi: 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ' }, { enabled: true, contentEnglish: 'x'.repeat(4000), contentPunjabi: 'ਪ'.repeat(4000) }]) {
+    const api = harness({ saved: { occasion } });
+    const loaded = await api.invoke();
+    assert.equal(loaded.status, 200);
+    const saved = await api.invoke({ occasion }, 'PUT');
+    assert.equal(saved.status, 200);
+    assert.deepEqual(saved.body.data, loaded.body.data);
+    assert.deepEqual((await api.invoke()).body.data, saved.body.data);
+  }
+  const migrated = validateInaugurationSettings({ occasion: legacy }).occasion;
+  assert.equal(migrated.contentEnglish, 'Legacy\nFirst\nSecond');
+  assert.equal(migrated.contentPunjabi, 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ');
+  assert.equal(migrated.titleEnglish, 'Legacy');
+  assert.equal(migrated.descriptionEnglish, 'First\nSecond');
+  assert.equal(migrated.links[0].url, legacy.links[0].url);
+  const explicit = validateInaugurationSettings({ occasion: { ...legacy, contentEnglish: '', contentPunjabi: 'New\nContent' } }).occasion;
+  assert.equal(explicit.contentEnglish, '');
+  assert.equal(explicit.contentPunjabi, 'New\nContent');
+  for (const occasion of [{ enabled: true, contentEnglish: ' \n', contentPunjabi: ' ' }, { ...legacy, contentEnglish: '', contentPunjabi: '' }]) {
+    const api = harness();
+    const result = await api.invoke({ occasion }, 'PUT');
+    assert.equal(result.status, 400);
+    assert.match(result.body.message, /English or Punjabi content/);
+    assert.equal(api.calls.some(([kind]) => kind === 'set'), false);
+    assert.equal((await harness({ saved: { occasion } }).invoke()).status, 503);
+  }
+});
 const button = (overrides = {}) => ({ id: 'welcome', labelEnglish: 'Enter website', labelPunjabi: 'ਜੀ ਆਇਆਂ ਨੂੰ', url: '/home', enabled: true, availableAt: '', ...overrides });
 const harness = ({ allowed = true, connected = true, saved = null, failure, parseFailure, authFailure } = {}) => {
   const calls = [];

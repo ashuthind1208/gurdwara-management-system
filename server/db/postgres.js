@@ -40,6 +40,13 @@ const ensureEventsSchema = async () => {
   }
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS landing_page_visitors (
+      visitor_hash CHAR(64) PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS events (
       id BIGSERIAL PRIMARY KEY,
       title TEXT NOT NULL,
@@ -3653,11 +3660,30 @@ const getDataCounts = async () => {
   }));
   return Object.fromEntries(entries);
 };
+const getLandingVisitorCount = async () => {
+  if (!pool) throw new Error('Visitor storage is not configured.');
+  const { rows } = await pool.query('SELECT COUNT(*) AS count FROM landing_page_visitors');
+  return Number(rows[0].count);
+};
+
+const registerLandingVisitor = async (hash) => {
+  if (typeof hash !== 'string' || !/^[0-9a-f]{64}$/.test(hash)) throw new Error('Invalid visitor hash.');
+  if (!pool) throw new Error('Visitor storage is not configured.');
+  await pool.query(
+    `INSERT INTO landing_page_visitors(visitor_hash) VALUES ($1)
+     ON CONFLICT (visitor_hash) DO NOTHING`,
+    [hash]
+  );
+  return getLandingVisitorCount();
+};
+
 module.exports = {
   pool,
   syncRelationalMirrorsFromContentStore,
   hasDatabaseConnection: Boolean(pool),
   ensureEventsSchema,
+  registerLandingVisitor,
+  getLandingVisitorCount,
   getSingleton,
   setSingleton,
   cleanupAuditLogs,
