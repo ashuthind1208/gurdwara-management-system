@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import InaugurationPage from '../../pages/Inauguration/InaugurationPage';
 import uploadService from '../../services/uploadService';
 import inaugurationService, {
-  DEFAULT_INAUGURATION_SETTINGS, INAUGURATION_QUERY_KEY, MAX_INAUGURATION_BUTTONS,
+  DEFAULT_INAUGURATION_SETTINGS, DEFAULT_INAUGURATION_OCCASION, INAUGURATION_QUERY_KEY, MAX_INAUGURATION_BUTTONS,
   normalizeInaugurationSettings, validateInaugurationSettings,
   toInaugurationLocalDateTime, fromInaugurationLocalDateTime
 } from '../../services/inaugurationService';
@@ -88,6 +88,11 @@ const AdminInaugurationPage = () => {
     setStatus(null);
     setValues((current) => ({ ...current, [key]: value }));
   };
+  const patchOccasion = (key, value) => {
+    dirty.current = true;
+    setStatus(null);
+    setValues((current) => ({ ...current, occasion: { ...current.occasion, [key]: value } }));
+  };
   const uploadLogo = async (event) => {
     const input = event.target;
     const file = input.files?.[0];
@@ -165,6 +170,22 @@ const AdminInaugurationPage = () => {
               <td className="p-3"><div className="flex gap-2"><button type="button" aria-label={`Edit button ${index + 1}`} onClick={() => setButtonDialog({ index, button })} className="rounded-lg border border-slate-300 px-3 py-2">Edit</button><button type="button" data-delete-guard-ignore="true" aria-label={`Delete button ${index + 1}`} onClick={() => patch('buttons', values.buttons.filter((_, position) => position !== index))} className="rounded-lg border border-rose-200 px-3 py-2 text-rose-700">Delete</button></div></td>
             </tr>)}</tbody>
           </table>{!values.buttons.length ? <p className="p-3 text-sm text-slate-600">No button links yet. Add a button to get started.</p> : null}</div>
+        </section>
+        <section className={sectionClass} aria-labelledby="occasion-card-heading">
+          <div className="admin-card-header-row border-b border-slate-200 pb-3"><h2 id="occasion-card-heading" style={headingStyle} className="text-lg font-semibold">Special occasion ticker</h2></div>
+          <p className="text-sm text-slate-600">Changes affect only this draft. Use Save landing page settings to publish the ticker.</p>
+          <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={values.occasion.enabled} onChange={(event) => patchOccasion('enabled', event.target.checked)} />Enable occasion ticker</label>
+          <label className="block text-sm font-semibold">Occasion date<input type="date" value={values.occasion.date} onChange={(event) => patchOccasion('date', event.target.value)} className={inputClass} /></label>
+          <p className="text-xs text-slate-600">Leave blank to display every day with the current Toronto date. A chosen date displays only on that civil date in America/Toronto.</p>
+          <div className="grid gap-4 md:grid-cols-2">{[['English', 'en'], ['Punjabi', 'pa']].map(([language, lang]) => <div key={lang} className="space-y-4">
+            <label className="block text-sm font-semibold">{language} content<textarea lang={lang} rows={6} maxLength={4000} value={values.occasion[`content${language}`]} onChange={(event) => patchOccasion(`content${language}`, event.target.value)} className={`${inputClass} ${lang === 'pa' ? 'font-gurmukhi' : ''}`} /></label>
+          </div>)}</div>
+          <div className="grid gap-4 sm:grid-cols-2">{[['backgroundColor', 'Occasion background color'], ['textColor', 'Occasion text color']].map(([key, label]) =>
+            <div key={key}><label className="block text-sm font-semibold">{label}<input aria-label={label} type="color" value={/^#[\da-f]{6}$/i.test(values.occasion[key]) ? values.occasion[key] : DEFAULT_INAUGURATION_OCCASION[key]} onChange={(event) => patchOccasion(key, event.target.value)} className="mt-2 block h-10 w-full rounded border border-slate-300" /></label><label className="mt-2 block text-xs font-semibold">{label} hex<input value={values.occasion[key]} onChange={(event) => patchOccasion(key, event.target.value)} maxLength={7} placeholder="#123456" className={inputClass} /></label></div>)}
+          </div>
+          <label className="block text-sm font-semibold">Occasion font size: {values.occasion.fontSize} px<input type="range" min="12" max="40" step="1" value={values.occasion.fontSize} onChange={(event) => patchOccasion('fontSize', Number(event.target.value))} className="mt-2 block w-full" /></label>
+          <label className="block text-sm font-semibold">Occasion height: {values.occasion.height} px<input type="range" min="48" max="160" step="1" value={values.occasion.height} onChange={(event) => patchOccasion('height', Number(event.target.value))} className="mt-2 block w-full" /></label>
+          <label className="block text-sm font-semibold">Occasion speed: {values.occasion.speed} px/s<input type="range" min="10" max="200" step="1" value={values.occasion.speed} onChange={(event) => patchOccasion('speed', Number(event.target.value))} className="mt-2 block w-full" /></label>
         </section>
         <div className="flex justify-end"><button type="submit" className="rounded-xl bg-blue-800 px-6 py-3 font-semibold text-white disabled:opacity-50" disabled={locked}>{mutation.isPending ? 'Saving…' : 'Save landing page settings'}</button></div>
       </fieldset>

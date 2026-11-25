@@ -2,10 +2,99 @@ import apiClient from './apiClient';
 import inaugurationService, {
   DEFAULT_INAUGURATION_SETTINGS, normalizeInaugurationSettings, isSafeInaugurationUrl,
   getInaugurationAvailability, formatInaugurationTorontoTime,
-  toInaugurationLocalDateTime, fromInaugurationLocalDateTime, validateInaugurationSettings
+  toInaugurationLocalDateTime, fromInaugurationLocalDateTime, validateInaugurationSettings,
+  getInaugurationOccasionAvailability, validateInaugurationOccasion
 } from './inaugurationService';
 
 jest.mock('./apiClient', () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn() } }));
+
+test('legacy settings get independent disabled occasion defaults and occasion survives explicit PUT', async () => {
+  const legacy = normalizeInaugurationSettings({ enabled: true });
+  expect(legacy.occasion).toEqual(DEFAULT_INAUGURATION_SETTINGS.occasion);
+  legacy.occasion.links.push({ labelEnglish: 'More', url: 'https://example.com' });
+  expect(DEFAULT_INAUGURATION_SETTINGS.occasion.links).toHaveLength(0);
+  legacy.occasion.enabled = true;
+  legacy.occasion.contentEnglish = 'Celebration';
+  await expect(inaugurationService.saveSettings(legacy)).resolves.toMatchObject({ occasion: legacy.occasion });
+  expect(apiClient.put).toHaveBeenCalledWith('/inauguration/settings', expect.objectContaining({ occasion: normalizeInaugurationSettings(legacy).occasion }));
+});
+
+test('strict occasion validation rejects unknown fields, invalid dates, nested links and image URLs before PUT', async () => {
+  const invalid = [null, [], { extra: true }, { enabled: 'false' }, { enabled: true },
+    ...['2026-02-29', '1900-02-29', '2026-04-31', '0000-01-01', '2026-13-01', '2026-1-01', null].map((date) => ({ date })),
+    { titleEnglish: 1 }, { titlePunjabi: 'x'.repeat(201) }, { descriptionEnglish: 'x'.repeat(2001) }, { descriptionPunjabi: null },
+    ...['contentEnglish', 'contentPunjabi'].flatMap((field) => [null, 1, {}, false, 'x'.repeat(4001)].map((value) => ({ [field]: value }))),
+    ...['/home/photo.png', '//evil.com', '/uploads/%252e%252e/secret', 'https://user:pass@example.com', '/bad%zz'].map((imageUrl) => ({ imageUrl })),
+    { links: {} }, { links: Array(5).fill({}) }, { links: [null] }, { links: [{ labelEnglish: 'More', url: 'https://example.com', extra: true }] },
+    { links: [{ labelEnglish: 'x'.repeat(121), url: 'https://example.com' }] }, { links: [{ labelEnglish: 'More', labelPunjabi: null, url: 'https://example.com' }] },
+    ...['/home', '//evil.com', 'https://user@example.com', 'https://example.com/%252e%252e/a', 'https://example.com/%0a', 'https://'].map((url) => ({ links: [{ labelEnglish: 'More', url }] }))];
+  for (const occasion of invalid) {
+    expect(validateInaugurationOccasion(occasion)).not.toBe('');
+    await expect(inaugurationService.saveSettings({ ...normalizeInaugurationSettings(), occasion })).rejects.toThrow();
+  }
+  expect(apiClient.put).not.toHaveBeenCalled();
+  expect(validateInaugurationOccasion({ date: '2000-02-29', imageUrl: '/api/uploads/photo.png' })).toBe('');
+});
+
+test('occasion availability uses Toronto civil dates across midnight, summer and DST transitions', () => {
+  const occasion = { enabled: true, titleEnglish: 'Celebration' };
+  expect(getInaugurationOccasionAvailability(occasion, Date.parse('2026-11-25T04:59:59Z'))).toEqual({ visible: true, date: '2026-11-24' });
+  expect(getInaugurationOccasionAvailability(occasion, Date.parse('2026-11-25T05:00:00Z'))).toEqual({ visible: true, date: '2026-11-25' });
+  const dated = { ...occasion, date: '2026-07-20' };
+  expect(getInaugurationOccasionAvailability(dated, Date.parse('2026-07-20T03:59:59Z')).visible).toBe(false);
+  expect(getInaugurationOccasionAvailability(dated, Date.parse('2026-07-20T04:00:00Z')).visible).toBe(true);
+  expect(getInaugurationOccasionAvailability(dated, Date.parse('2026-07-21T04:00:00Z')).visible).toBe(false);
+  for (const now of ['2026-11-01T05:30:00Z', '2026-11-01T06:30:00Z', '2026-03-08T06:59:59Z', '2026-03-08T07:00:00Z']) {
+    expect(getInaugurationOccasionAvailability(occasion, Date.parse(now))).toEqual({ visible: true, date: now.slice(0, 10) });
+  }
+  expect(getInaugurationOccasionAvailability({ ...occasion, enabled: false }).visible).toBe(false);
+  expect(getInaugurationOccasionAvailability({ ...occasion, date: '2026-02-30' }).visible).toBe(false);
+});
+
+test('ticker normalization defaults malformed styles without coercing integers and preserves legacy images', () => {
+  const defaults = DEFAULT_INAUGURATION_SETTINGS.occasion;
+  for (const value of [null, false, '20', 20.5, NaN, Infinity, {}, -1, 999]) {
+    expect(normalizeInaugurationSettings({ occasion: { backgroundColor: value, textColor: value, fontSize: value, height: value, speed: value, imageUrl: '/uploads/legacy.png' } }).occasion).toMatchObject({
+      backgroundColor: defaults.backgroundColor, textColor: defaults.textColor, fontSize: 20, height: 80, speed: 60, imageUrl: '/uploads/legacy.png'
+    });
+  }
+  expect(normalizeInaugurationSettings({ occasion: { backgroundColor: ' #aBc123 ', textColor: '#FEDCBA', fontSize: 40, height: 160 } }).occasion).toMatchObject({ backgroundColor: '#aBc123', textColor: '#FEDCBA', fontSize: 40, height: 160 });
+});
+
+test('ticker style validation rejects invalid types and bounds before PUT and saves inclusive bounds', async () => {
+  const invalid = [
+    ...['backgroundColor', 'textColor'].flatMap((field) => ['red', '#fff', '#12345678', '#GGGGGG', '', null, 123456, {}, false].map((value) => ({ [field]: value }))),
+    ...[['fontSize', 11, 41], ['height', 47, 161], ['speed', 9, 201]].flatMap(([field, below, above]) => [below, above, 20.5, '20', null, false, {}, NaN, Infinity].map((value) => ({ [field]: value })))
+  ];
+  for (const occasion of invalid) {
+    expect(validateInaugurationOccasion(occasion)).toMatch(/occasion\.(backgroundColor|textColor|fontSize|height|speed)/);
+    await expect(inaugurationService.saveSettings({ ...normalizeInaugurationSettings(), occasion })).rejects.toThrow();
+  }
+  expect(apiClient.put).not.toHaveBeenCalled();
+  for (const [fontSize, height, speed] of [[12, 48, 10], [40, 160, 200]]) {
+    const settings = normalizeInaugurationSettings({ occasion: { fontSize, height, speed, backgroundColor: '#aBc123', textColor: '#FEDCBA', imageUrl: '/uploads/legacy.png' } });
+    await expect(inaugurationService.saveSettings(settings)).resolves.toEqual(settings);
+    expect(apiClient.put).toHaveBeenLastCalledWith('/inauguration/settings', settings);
+  }
+});
+
+test('content migrates absent legacy fields, preserves explicit blanks and multiline text, and saves either language', async () => {
+  const legacy = { enabled: true, titleEnglish: ' Legacy ', descriptionEnglish: ' First\nSecond ', titlePunjabi: 'ਸਮਾਗਮ', descriptionPunjabi: 'ਜੀ ਆਇਆਂ ਨੂੰ',
+    links: [{ labelEnglish: 'More', url: 'https://example.com' }] };
+  const normalized = normalizeInaugurationSettings({ occasion: legacy }).occasion;
+  expect(normalized).toMatchObject({ contentEnglish: 'Legacy\nFirst\nSecond', contentPunjabi: 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ', speed: 60, titleEnglish: ' Legacy ', links: legacy.links });
+  expect(normalizeInaugurationSettings({ occasion: { ...legacy, contentEnglish: '', contentPunjabi: 'New\nPunjabi' } }).occasion).toMatchObject({ contentEnglish: '', contentPunjabi: 'New\nPunjabi' });
+  expect(normalizeInaugurationSettings({ occasion: { titleEnglish: 'Title only' } }).occasion.contentEnglish).toBe('Title only');
+  expect(normalizeInaugurationSettings({ occasion: { descriptionPunjabi: 'ਜੀ ਆਇਆਂ ਨੂੰ' } }).occasion.contentPunjabi).toBe('ਜੀ ਆਇਆਂ ਨੂੰ');
+  for (const occasion of [legacy, { enabled: true, contentEnglish: 'English\nOnly' }, { enabled: true, contentPunjabi: 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ' }, { enabled: true, contentEnglish: 'x'.repeat(4000), contentPunjabi: 'ਪ'.repeat(4000) }]) {
+    const settings = { ...normalizeInaugurationSettings(), occasion };
+    await expect(inaugurationService.saveSettings(settings)).resolves.toMatchObject({ occasion: normalizeInaugurationSettings(settings).occasion });
+    expect(apiClient.put).toHaveBeenLastCalledWith('/inauguration/settings', normalizeInaugurationSettings(settings));
+  }
+  for (const occasion of [{ enabled: true, contentEnglish: ' \n', contentPunjabi: ' ' }, { ...legacy, contentEnglish: '', contentPunjabi: '' }]) {
+    expect(validateInaugurationOccasion(occasion)).toMatch(/English or Punjabi content/);
+  }
+});
 
 beforeEach(() => {
   apiClient.get.mockResolvedValue({ data: { data: { enabled: true } } });

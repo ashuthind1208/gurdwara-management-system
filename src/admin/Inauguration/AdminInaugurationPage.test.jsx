@@ -26,6 +26,119 @@ const addButton = () => {
   fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('URL'), { target: { value: '/home' } });
 };
 
+test('occasion edits remain a draft, require either language content and save multiline content explicitly', async () => {
+  await setup();
+  expect(screen.getByLabelText('Enable occasion ticker')).not.toBeChecked();
+  expect(screen.getByLabelText('Occasion date')).toHaveValue('');
+  fireEvent.click(screen.getByLabelText('Enable occasion ticker'));
+  fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('English or Punjabi content');
+  expect(inaugurationService.saveSettings).not.toHaveBeenCalled();
+  for (const language of ['English', 'Punjabi']) {
+    expect(screen.getByLabelText(`${language} content`)).toHaveAttribute('maxlength', '4000');
+    expect(screen.getByLabelText(`${language} content`).tagName).toBe('TEXTAREA');
+    expect(screen.queryByLabelText(`Occasion title (${language})`)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(`Occasion description (${language})`)).not.toBeInTheDocument();
+  }
+  for (const [label, value] of [['English content', 'Celebration\nWelcome\neveryone'], ['Punjabi content', 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ'], ['Occasion date', '2026-11-24']]) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+  await screen.findByText('Landing page settings saved.');
+  expect(inaugurationService.saveSettings.mock.calls[0][0]).toMatchObject({ enabled: false, occasion: {
+    enabled: true, date: '2026-11-24', titleEnglish: '', titlePunjabi: '',
+    descriptionEnglish: '', descriptionPunjabi: '', imageUrl: '',
+    contentEnglish: 'Celebration\nWelcome\neveryone', contentPunjabi: 'ਸਮਾਗਮ\nਜੀ ਆਇਆਂ ਨੂੰ',
+    backgroundColor: '#071B36', textColor: '#FFFFFF', fontSize: 20, height: 80, speed: 60, links: []
+  } });
+});
+
+test('legacy text migrates to content, links stay hidden and refresh cannot overwrite draft', async () => {
+  const links = [{ labelEnglish: 'More', labelPunjabi: 'ਹੋਰ', url: 'https://example.com/more' }];
+  inaugurationService.getSettings.mockResolvedValue(normalizeInaugurationSettings({ occasion: {
+    enabled: true, titleEnglish: 'Legacy', descriptionEnglish: 'Welcome\neveryone', titlePunjabi: 'ਸਮਾਗਮ', links
+  } }));
+  const { client } = await setup();
+  expect(screen.getByLabelText('English content')).toHaveValue('Legacy\nWelcome\neveryone');
+  expect(screen.getByLabelText('Punjabi content')).toHaveValue('ਸਮਾਗਮ');
+  expect(screen.queryByRole('button', { name: 'Add occasion link' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Occasion link 1 URL')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('English content'), { target: { value: '' } });
+  act(() => client.setQueryData(INAUGURATION_QUERY_KEY, normalizeInaugurationSettings({ occasion: { titleEnglish: 'Other save' } })));
+  expect(screen.getByLabelText('English content')).toHaveValue('');
+  expect(inaugurationService.saveSettings).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+  await screen.findByText('Landing page settings saved.');
+  expect(inaugurationService.saveSettings.mock.calls[0][0].occasion).toMatchObject({
+    titleEnglish: 'Legacy', descriptionEnglish: 'Welcome\neveryone', titlePunjabi: 'ਸਮਾਗਮ',
+    contentEnglish: '', contentPunjabi: 'ਸਮਾਗਮ', links
+  });
+});
+
+test('ticker defaults and style edits remain a draft, save explicitly and preserve hidden legacy images', async () => {
+  inaugurationService.getSettings.mockResolvedValue(normalizeInaugurationSettings({ occasion: { imageUrl: '/api/uploads/legacy.webp' } }));
+  await setup();
+  expect(screen.getByRole('heading', { name: 'Special occasion ticker' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('Occasion photo URL')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Upload occasion photo')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Occasion background color')).toHaveValue('#071b36');
+  expect(screen.getByLabelText('Occasion text color')).toHaveValue('#ffffff');
+  const fontSize = screen.getByRole('slider', { name: 'Occasion font size: 20 px' });
+  const height = screen.getByRole('slider', { name: 'Occasion height: 80 px' });
+  const speed = screen.getByRole('slider', { name: 'Occasion speed: 60 px/s' });
+  expect(speed).toHaveValue('60');
+  expect(speed).toHaveAttribute('min', '10');
+  expect(speed).toHaveAttribute('max', '200');
+  expect(speed).toHaveAttribute('step', '1');
+  expect(fontSize).toHaveAttribute('min', '12');
+  expect(fontSize).toHaveAttribute('max', '40');
+  expect(fontSize).toHaveAttribute('step', '1');
+  expect(height).toHaveAttribute('min', '48');
+  expect(height).toHaveAttribute('max', '160');
+  expect(height).toHaveAttribute('step', '1');
+  fireEvent.change(screen.getByLabelText('Occasion background color'), { target: { value: '#123456' } });
+  fireEvent.change(screen.getByLabelText('Occasion text color hex'), { target: { value: '#ABCDEF' } });
+  expect(screen.getByLabelText('Occasion text color')).toHaveValue('#abcdef');
+  fireEvent.change(fontSize, { target: { value: '40' } });
+  fireEvent.change(height, { target: { value: '160' } });
+  fireEvent.change(speed, { target: { value: '10' } });
+  expect(screen.getByRole('slider', { name: 'Occasion speed: 10 px/s' })).toHaveValue('10');
+  fireEvent.change(speed, { target: { value: '200' } });
+  expect(screen.getByRole('slider', { name: 'Occasion speed: 200 px/s' })).toHaveValue('200');
+  expect(screen.getByRole('slider', { name: 'Occasion font size: 40 px' })).toHaveValue('40');
+  expect(screen.getByRole('slider', { name: 'Occasion height: 160 px' })).toHaveValue('160');
+  expect(uploadService.uploadFile).not.toHaveBeenCalled();
+  expect(inaugurationService.saveSettings).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+  await screen.findByText('Landing page settings saved.');
+  expect(inaugurationService.saveSettings.mock.calls[0][0].occasion).toMatchObject({ backgroundColor: '#123456', textColor: '#ABCDEF', fontSize: 40, height: 160, speed: 200, imageUrl: '/api/uploads/legacy.webp' });
+});
+
+test('ticker color validation keeps draft and saving locks occasion controls', async () => {
+  await setup();
+  fireEvent.change(screen.getByLabelText('English content'), { target: { value: 'Keep occasion' } });
+  for (const label of ['Occasion background color hex', 'Occasion text color hex']) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value: '#abc' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('six-digit hex');
+    expect(inaugurationService.saveSettings).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(label), { target: { value: '#123456' } });
+  }
+  expect(screen.getByLabelText('English content')).toHaveValue('Keep occasion');
+  let finish;
+  inaugurationService.saveSettings.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save landing page settings' }));
+  await waitFor(() => expect(screen.getByLabelText('Occasion background color')).toBeDisabled());
+  expect(screen.getByLabelText('Enable occasion ticker')).toBeDisabled();
+  expect(screen.getByRole('slider', { name: 'Occasion font size: 20 px' })).toBeDisabled();
+  expect(screen.getByRole('slider', { name: 'Occasion height: 80 px' })).toBeDisabled();
+  expect(screen.getByRole('slider', { name: 'Occasion speed: 60 px/s' })).toBeDisabled();
+  expect(screen.getByLabelText('English content')).toBeDisabled();
+  expect(screen.getByLabelText('Punjabi content')).toBeDisabled();
+  await act(async () => finish(normalizeInaugurationSettings({ occasion: { contentEnglish: 'Keep occasion' } })));
+  await screen.findByText('Landing page settings saved.');
+});
+
 beforeEach(() => {
   inaugurationService.getSettings.mockResolvedValue(normalizeInaugurationSettings());
   inaugurationService.saveSettings.mockImplementation(async (settings) => settings);
@@ -40,7 +153,7 @@ test('loads defaults, previews while disabled, edits live without publishing and
   fireEvent.change(screen.getByLabelText('Heading (English)'), { target: { value: 'Our launch' } });
   fireEvent.change(screen.getByLabelText('Message (Punjabi)'), { target: { value: 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ\nਜੀ ਆਇਆਂ ਨੂੰ' } });
   fireEvent.change(screen.getByLabelText('Background color'), { target: { value: '#123456' } });
-  fireEvent.change(screen.getByRole('slider'), { target: { value: '240' } });
+  fireEvent.change(screen.getByRole('slider', { name: 'Logo size: 180 px' }), { target: { value: '240' } });
   fireEvent.click(screen.getByLabelText('Use landing page as homepage'));
   expect(within(draft).getByRole('heading', { name: 'Our launch' })).toBeInTheDocument();
   expect(draft).toHaveStyle({ backgroundColor: '#123456' });
@@ -148,6 +261,8 @@ test('loading failure disables editing and save, retry restores the form', async
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   render(<QueryClientProvider client={client}><AdminInaugurationPage /></QueryClientProvider>);
   expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load saved settings');
+  expect(screen.getByLabelText('Enable occasion ticker')).toBeDisabled();
+  expect(screen.getByLabelText('Occasion background color')).toBeDisabled();
   expect(screen.getByLabelText('Use landing page as homepage')).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Save landing page settings' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Retry loading' }));

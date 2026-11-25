@@ -105,6 +105,7 @@ const { createLedScreenService } = require('./ledScreenService');
 const { createWhatsAppWebhookHandler } = require('./whatsappWebhook');
 const { createWelcomeJourneyHandler } = require('./welcomeJourneyApi');
 const { createInaugurationHandler } = require('./inaugurationApi');
+const { createInaugurationVisitorsHandler } = require('./inaugurationVisitors');
 const { createStreamOverlayHandler } = require('./streamOverlayApi');
 const { createAuditCleanupHandler } = require('./auditCleanupApi');
 const { createWidgetPlacementsHandler, projectPublicWidgetPlacements } = require('./widgetPlacements');
@@ -6430,6 +6431,7 @@ const widgetPlacementsHandler = createWidgetPlacementsHandler({ eventsDb, getReq
 const streamOverlayHandler = createStreamOverlayHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
 const auditCleanupHandler = createAuditCleanupHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
 const inaugurationHandler = createInaugurationHandler({ eventsDb, canManageAdminPage, parseJsonObjectBody, sendJson });
+const inaugurationVisitorsHandler = createInaugurationVisitorsHandler({ eventsDb, parseJsonObjectBody, sendJson });
 const welcomeJourneyHandler = createWelcomeJourneyHandler({
   eventsDb,
   getGurdwaraBranding,
@@ -6487,6 +6489,9 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (await inaugurationHandler(request, response, requestUrl)) {
+    return;
+  }
+  if (await inaugurationVisitorsHandler(request, response, requestUrl)) {
     return;
   }
 

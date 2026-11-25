@@ -11,6 +11,9 @@ const AudioPillPlayer = ({
   accent = 'light',
   stream = false,
   showProgress = false,
+  autoPlay = false,
+  initialVolume = 1,
+  minimal = false,
   stopSignal = 0
 }) => {
   const audioRef = useRef(null);
@@ -23,6 +26,7 @@ const AudioPillPlayer = ({
   const touchPlaybackTimeoutRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -199,6 +203,22 @@ const AudioPillPlayer = ({
     };
   }, [startAtSeconds, resolvedSrc, stream]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+    audio.volume = Math.min(1, Math.max(0, Number(initialVolume) || 0));
+    if (!autoPlay) return undefined;
+    let cancelled = false;
+    playbackRequestedRef.current = true;
+    audio.play().catch(() => {
+      if (cancelled) return;
+      playbackRequestedRef.current = false;
+      setIsPlaying(false);
+      setAutoplayBlocked(true);
+    });
+    return () => { cancelled = true; playbackRequestedRef.current = false; audio.pause(); };
+  }, [autoPlay, initialVolume, resolvedSrc]);
+
   useEffect(() => () => {
     if (touchPlaybackTimeoutRef.current) {
       window.clearTimeout(touchPlaybackTimeoutRef.current);
@@ -212,6 +232,7 @@ const AudioPillPlayer = ({
     }
 
     setHasError(false);
+    setAutoplayBlocked(false);
 
     if (audio.paused) {
       playbackRequestedRef.current = true;
@@ -277,14 +298,14 @@ const AudioPillPlayer = ({
   const progressPercent = safeDuration > 0 ? Math.min(100, Math.max(0, (currentTime / safeDuration) * 100)) : 0;
 
   return (
-    <div className={`rounded-2xl border px-3 py-2 shadow-lg ${toneClasses} ${className}`}>
+    <div className={`${minimal ? 'text-inherit' : `rounded-2xl border px-3 py-2 shadow-lg ${toneClasses}`} ${className}`}>
       <audio ref={audioRef} preload="none" src={usesHlsJs ? undefined : resolvedSrc} />
       <div className="flex items-center gap-3">
         <button
           type="button"
           onTouchEnd={handlePlaybackTouchEnd}
           onClick={handlePlaybackClick}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full touch-manipulation select-none ${accent === 'dark' ? 'bg-white text-brand-blue' : 'bg-brand-blue text-white'}`}
+          className={`inline-flex ${minimal ? 'h-8 w-8 border border-current' : 'h-10 w-10'} items-center justify-center rounded-full touch-manipulation select-none ${minimal ? '' : accent === 'dark' ? 'bg-white text-brand-blue' : 'bg-brand-blue text-white'}`}
           aria-label={`${isPlaying ? 'Pause' : 'Play'} ${label}`}
         >
           {isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
@@ -292,10 +313,10 @@ const AudioPillPlayer = ({
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{label}</p>
-          <p className={`truncate text-xs ${subtitleClasses}`}>{hasError ? 'Audio temporarily unavailable' : subtitle}</p>
+          {!minimal || hasError || autoplayBlocked ? <p className={`truncate text-xs ${minimal ? '' : subtitleClasses}`}>{hasError ? 'Audio temporarily unavailable' : autoplayBlocked ? 'Tap Play to listen' : subtitle}</p> : null}
         </div>
 
-        <span className={`ml-auto h-2.5 w-2.5 rounded-full ${pulseClasses}`} />
+        {!minimal ? <span className={`ml-auto h-2.5 w-2.5 rounded-full ${pulseClasses}`} /> : null}
       </div>
       {showProgress ? (
         <div className="mt-3">
